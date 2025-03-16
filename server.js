@@ -113,7 +113,87 @@ async function verifyDonationTransaction(txHash, expectedSender, expectedRecipie
     }
 }
 
-// Add methods to the RPC server
+// Helper function to extract field values from Noir format
+function extractFieldValue(field) {
+    if (field && field.Single && field.Single.inner) {
+        return field.Single.inner;
+    }
+    // Handle cases where it might be a direct string
+    return typeof field === 'string' ? field : '';
+}
+
+// Add direct verifyDonation method to handle the format you're receiving
+server.addMethod("verifyDonation", async (params) => {
+    console.log("Direct verifyDonation call received:", JSON.stringify(params, null, 2));
+
+    try {
+        // Parse parameters from the direct call
+        const [txHashObj, senderObj, recipientObj, minAmountObj] = params;
+
+        // Extract the inner values
+        const txHashHex = extractFieldValue(txHashObj);
+        const senderHex = extractFieldValue(senderObj);
+        const recipientHex = extractFieldValue(recipientObj);
+        const minAmountHex = extractFieldValue(minAmountObj);
+
+        // Convert to proper format for verification
+        const txHash = `0x${txHashHex}`;
+        const sender = `0x${senderHex.slice(24)}`; // Remove padding to get standard Ethereum address
+        const recipient = `0x${recipientHex.slice(24)}`; // Remove padding to get standard Ethereum address
+        const minAmount = ethers.BigNumber.from(`0x${minAmountHex}`).toString();
+
+        console.log(`Verifying donation transaction:`);
+        console.log(`- TX Hash: ${txHash}`);
+        console.log(`- Sender: ${sender}`);
+        console.log(`- Recipient: ${recipient}`);
+        console.log(`- Min Amount: ${minAmount}`);
+
+        // Verify the donation transaction
+        const isValid = await verifyDonationTransaction(
+            txHash,
+            sender,
+            recipient,
+            minAmount
+        );
+
+        console.log(`Verification result: ${isValid ? "VALID" : "INVALID"}`);
+        
+        // Format the response in the way Noir expects with the Single variant
+        const response = {
+            values: [
+                {
+                    Single: {
+                        inner: isValid ? "1" : "0"
+                    }
+                }
+            ]
+        };
+        
+        console.log(`Returning response: ${JSON.stringify(response, null, 2)}`);
+
+        // Return in the format expected by Noir
+        return response;
+
+    } catch (error) {
+        console.error("Error in verifyDonation:", error);
+        
+        // Format error response in the way Noir expects
+        const errorResponse = {
+            values: [
+                {
+                    Single: {
+                        inner: "0"
+                    }
+                }
+            ]
+        };
+        
+        console.log(`Returning error response: ${JSON.stringify(errorResponse, null, 2)}`);
+        return errorResponse; // Return invalid on error
+    }
+});
+
+// Also keep the resolve_foreign_call method for standard Noir oracle integration
 server.addMethod("resolve_foreign_call", async (params) => {
     console.log("Oracle call received:", JSON.stringify(params, null, 2));
 
@@ -123,17 +203,16 @@ server.addMethod("resolve_foreign_call", async (params) => {
 
     try {
         // Parse parameters from the call
-        // Format expected: [txHash, sender, recipient, minAmount]
-        const inputs = params[0].inputs[0];
+        const inputs = params[0].inputs;
 
-        if (!Array.isArray(inputs) || inputs.length !== 4) {
-            throw new Error(`Invalid inputs format. Expected array with 4 elements.`);
+        if (!Array.isArray(inputs) || inputs.length !== 1 || !Array.isArray(inputs[0]) || inputs[0].length !== 4) {
+            console.log(`Invalid inputs format: ${JSON.stringify(inputs)}`);
+            throw new Error(`Invalid inputs format. Expected array with nested array of 4 elements.`);
         }
 
-        const [txHashHex, senderHex, recipientHex, minAmountHex] = inputs;
+        const [txHashHex, senderHex, recipientHex, minAmountHex] = inputs[0];
 
         // Convert hex strings to proper format if needed
-        // Note: We're assuming these are hex strings representing Field elements
         const txHash = txHashHex.startsWith('0x') ? txHashHex : `0x${txHashHex}`;
         const sender = senderHex.startsWith('0x') ? senderHex : `0x${senderHex}`;
         const recipient = recipientHex.startsWith('0x') ? recipientHex : `0x${recipientHex}`;
@@ -154,13 +233,39 @@ server.addMethod("resolve_foreign_call", async (params) => {
         );
 
         console.log(`Verification result: ${isValid ? "VALID" : "INVALID"}`);
+        
+        // Format the response in the way Noir expects with the Single variant
+        const response = {
+            values: [
+                {
+                    Single: {
+                        inner: isValid ? "1" : "0"
+                    }
+                }
+            ]
+        };
+        
+        console.log(`Returning response: ${JSON.stringify(response, null, 2)}`);
 
-        // Return 1 for valid, 0 for invalid as a string
-        return { values: [isValid ? "1" : "0"] };
+        // Return in the format expected by Noir
+        return response;
 
     } catch (error) {
         console.error("Error in resolve_foreign_call:", error);
-        return { values: ["0"] }; // Return invalid on error
+        
+        // Format error response in the way Noir expects
+        const errorResponse = {
+            values: [
+                {
+                    Single: {
+                        inner: "0"
+                    }
+                }
+            ]
+        };
+        
+        console.log(`Returning error response: ${JSON.stringify(errorResponse, null, 2)}`);
+        return errorResponse; // Return invalid on error
     }
 });
 

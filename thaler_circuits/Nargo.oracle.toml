@@ -1,0 +1,2 @@
+[oracles]
+verifyDonation = { url = "http://localhost:5555", method = "resolve_foreign_call" } 
