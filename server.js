@@ -157,7 +157,7 @@ server.addMethod("verifyDonation", async (params) => {
         );
 
         console.log(`Verification result: ${isValid ? "VALID" : "INVALID"}`);
-        
+
         // Format the response in the way Noir expects with the Single variant
         const response = {
             values: [
@@ -168,7 +168,7 @@ server.addMethod("verifyDonation", async (params) => {
                 }
             ]
         };
-        
+
         console.log(`Returning response: ${JSON.stringify(response, null, 2)}`);
 
         // Return in the format expected by Noir
@@ -176,7 +176,7 @@ server.addMethod("verifyDonation", async (params) => {
 
     } catch (error) {
         console.error("Error in verifyDonation:", error);
-        
+
         // Format error response in the way Noir expects
         const errorResponse = {
             values: [
@@ -187,7 +187,7 @@ server.addMethod("verifyDonation", async (params) => {
                 }
             ]
         };
-        
+
         console.log(`Returning error response: ${JSON.stringify(errorResponse, null, 2)}`);
         return errorResponse; // Return invalid on error
     }
@@ -233,7 +233,7 @@ server.addMethod("resolve_foreign_call", async (params) => {
         );
 
         console.log(`Verification result: ${isValid ? "VALID" : "INVALID"}`);
-        
+
         // Format the response in the way Noir expects with the Single variant
         const response = {
             values: [
@@ -244,7 +244,7 @@ server.addMethod("resolve_foreign_call", async (params) => {
                 }
             ]
         };
-        
+
         console.log(`Returning response: ${JSON.stringify(response, null, 2)}`);
 
         // Return in the format expected by Noir
@@ -252,7 +252,7 @@ server.addMethod("resolve_foreign_call", async (params) => {
 
     } catch (error) {
         console.error("Error in resolve_foreign_call:", error);
-        
+
         // Format error response in the way Noir expects
         const errorResponse = {
             values: [
@@ -263,7 +263,7 @@ server.addMethod("resolve_foreign_call", async (params) => {
                 }
             ]
         };
-        
+
         console.log(`Returning error response: ${JSON.stringify(errorResponse, null, 2)}`);
         return errorResponse; // Return invalid on error
     }

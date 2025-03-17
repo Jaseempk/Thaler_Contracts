@@ -1,0 +1,45 @@
+{
+  "noir_version": "1.0.0-beta.2+1a2a08cbcb68646ff1aaef383cfc1798933c1355",
+  "hash": 2896526177007004720,
+  "abi": {
+    "parameters": [
+      {
+        "name": "tx_hash",
+        "type": { "kind": "field" },
+        "visibility": "private"
+      },
+      {
+        "name": "sender",
+        "type": { "kind": "field" },
+        "visibility": "private"
+      },
+      {
+        "name": "recipient",
+        "type": { "kind": "field" },
+        "visibility": "private"
+      },
+      {
+        "name": "donation_amount",
+        "type": { "kind": "field" },
+        "visibility": "private"
+      }
+    ],
+    "return_type": null,
+    "error_types": {
+      "17843811134343075018": {
+        "error_kind": "string",
+        "string": "Stack too deep"
+      }
+    }
+  },
+  "bytecode": "H4sIAAAAAAAA/9VVy07DMBC04xQw5SU4wAW+wVGDmmMOBb7DokTqpZUQQuotn95E3VW2I7eX2IeOZK1X68zOrh/Rag/TDU3zHKwEr6nJunEoInK5lDr1mejMzkSnSaTz4ND2ovuGGHUcXNgbWUs2E/GIYgsLeWPyV66sbKC+iPpnljgnafhL5r9Iw+8uiWfRDvyyFs57S74WveRvOJaJ2AfE5Jn7hJg8o18Uu+rGvRrmDzS3oCPFeZG1xO73U0A/55pSrS/k33Tjjub/P7+rZrvYrP3farOWu4A7JoG3H7/LwDfgn/r1hYC706Mm68ahQM2TQO0aYrz2GfQZqLmOo9E9Cl4FuaZqeE3zNn7+eeUc5zXt0IfQa5+LuFz/Sv51oI58hM5m7otm5hv/7pfL8ttjn3rIW7AD+Ps5e4cJAAA=",
+  "debug_symbols": "nZHRCoMgGIXf5b/2Qp2z2auMMaz+QhANs8GI3n06upC2m7oRj5zvgHwLdNjMw9O43k9Q3xewvtXReJfSshJogrHWDM/yGWg+WPXtT6N2OU5Rhwi1olcC6Lp0k1Xie2MRaslX8lMVF7lVhWJl9UGA3f6NMyrZhjBaiT2jjjOcnmDYCYYfZdaUXjoY3VjcXPSzaws18T3iztIYfIvdHDD7KlTlX3JBuEqzafoD",
+  "file_map": {
+    "62": {
+      "source": "// Import required Noir standard library components\n// use dep::std;\n\n// Define the oracle to verify donations\n#[oracle(verifyDonation)]\nunconstrained fn verify_donation(_tx_hash: Field, _sender: Field, _recipient: Field, _min_amount: Field) -> Field {}\n\n// Unconstrained function to call the oracle\nunconstrained fn donation_verified(\n    tx_hash: Field,\n    sender: Field,\n    recipient: Field,\n    min_amount: Field\n) -> Field {\n    verify_donation(tx_hash, sender, recipient, min_amount)\n}\n\n// Main function to prove a donation was made before withdrawal\nunconstrained fn main(\n    tx_hash: Field, // Hash of the donation transaction\n    sender: Field, // Address that made the donation (should match withdrawal caller)\n    recipient: Field, // Donation recipient address\n    donation_amount: Field // Amount donated\n) {\n    // Verify the donation transaction occurred and is valid\n    let is_valid = donation_verified(tx_hash, sender, recipient, donation_amount);\n\n    // Constrain that the transaction is valid (1 means valid, 0 means invalid)\n    assert(is_valid == 1);\n}\n\n// Test function\n#[test]\nunconstrained fn test_donation_verification() {\n    // For testing, you would provide real transaction data\n    // These values would need to be updated with real data\n    let test_tx_hash = 0x1af2fe37cb8d30513602d79b5f2acd2bd1775595929a9cc4147aba8235ec1ef7;\n    let test_sender = 0x66aAf3098E1eB1F24348e84F509d8bcfD92D0620;\n    let test_recipient = 0xF941d25cEB9A56f36B2E246eC13C125305544283;\n    let test_donation = 10000000000000000; // 1 ETH in wei\n\n    // This should pass if oracle verifies the transaction\n    main(test_tx_hash, test_sender, test_recipient, test_donation);\n}\n",
+      "path": "/Users/jasim/SOLIDITY/Personal/Thaler/ThalerContracts/thaler_circuits/src/main.nr"
+    }
+  },
+  "names": ["main"],
+  "brillig_names": ["main"]
+}

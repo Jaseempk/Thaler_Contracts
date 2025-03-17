@@ -1,5 +1,5 @@
 // Import required Noir standard library components
-use dep::std;
+// use dep::std;
 
 // Define the oracle to verify donations
 #[oracle(verifyDonation)]
@@ -16,7 +16,7 @@ unconstrained fn donation_verified(
 }
 
 // Main function to prove a donation was made before withdrawal
-fn main(
+unconstrained fn main(
     tx_hash: Field, // Hash of the donation transaction
     sender: Field, // Address that made the donation (should match withdrawal caller)
     recipient: Field, // Donation recipient address
@@ -31,13 +31,13 @@ fn main(
 
 // Test function
 #[test]
-fn test_donation_verification() {
+unconstrained fn test_donation_verification() {
     // For testing, you would provide real transaction data
     // These values would need to be updated with real data
     let test_tx_hash = 0x1af2fe37cb8d30513602d79b5f2acd2bd1775595929a9cc4147aba8235ec1ef7;
     let test_sender = 0x66aAf3098E1eB1F24348e84F509d8bcfD92D0620;
     let test_recipient = 0xF941d25cEB9A56f36B2E246eC13C125305544283;
-    let test_donation = 10000000000000000; // 1 ETH in wei
+    let test_donation = 10000000000000000; // 0.01 ETH in wei
 
     // This should pass if oracle verifies the transaction
     main(test_tx_hash, test_sender, test_recipient, test_donation);
