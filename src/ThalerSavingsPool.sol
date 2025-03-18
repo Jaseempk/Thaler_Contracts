@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 contract ThalerSavingsPool {
     error TLR__InValidProof();
+    error TLR__CallerNotOwner();
     error TLR__INVALID_INPUTS();
     error TLR_InvalidDuration();
     error TLR__SavingPoolEnded();
@@ -14,12 +15,14 @@ contract ThalerSavingsPool {
     error TLR__InvalidEthDepositRatio();
     error TLR__InvalidEthDepositAmount();
     error TLR__InvalidInitialETHDeposit();
+    error TLR__InsufficientDonationAmount();
     error TLR__SavingPoolDepositIntervalNotYet();
 
     uint256 private constant THREE_MONTHS = 7884000;
     uint256 private constant SIX_MONTHS = 15768000;
     uint256 private constant TWELVE_MONTHS = 31536000;
     uint256 public constant INTERVAL = 2628000; //1 month
+    uint256 public constant DONATION_RATIO = (3 / 25) * 100;
 
     IVerifier public verifier;
 
@@ -62,6 +65,14 @@ contract ThalerSavingsPool {
         uint256 nextDepositDate,
         uint256 numberOfDeposits,
         uint256 lastDepositedTimestamp
+    );
+
+    event WithdrawFromERC20Pool(
+        address user,
+        uint256 timeStamp,
+        uint256 totalSaved,
+        bytes32 savingsPoolId,
+        uint256 totalWithdrawn
     );
 
     constructor(address _verifier) {
@@ -231,18 +242,25 @@ contract ThalerSavingsPool {
         bytes32[] calldata _publicInputs
     ) public {
         SavingsPool storage savingsPool = savingsPools[_savingsPoolId];
+        if (msg.sender != savingsPool.user) revert TLR__CallerNotOwner();
         if (block.timestamp < savingsPool.endDate) {
             if (verifier.verify(_proof, _publicInputs))
                 revert TLR__InValidProof();
+            uint256 donationAount = uint256(_publicInputs[3]);
+            if ((savingsPool.endDate / 2) > block.timestamp) {
+                if (donationAount < ((savingsPool.totalSaved) / 4))
+                    revert TLR__InsufficientDonationAmount();
+            } else {
+                if (
+                    donationAount <
+                    (((savingsPool.totalSaved) * DONATION_RATIO) / 100)
+                ) revert TLR__InsufficientDonationAmount();
+            }
         }
-
-        if (msg.sender != savingsPool.user) revert TLR__INVALID_INPUTS();
+        uint256 totalSaved = savingsPool.totalSaved;
         if (savingsPool.totalSaved == 0) revert TLR__INVALID_INPUTS();
-
-        IERC20(savingsPool.tokenToSave).transfer(
-            msg.sender,
-            savingsPool.totalSaved
-        );
+        delete savingsPools[_savingsPoolId];
+        IERC20(savingsPool.tokenToSave).transfer(msg.sender, totalSaved);
         savingsPool.totalWithdrawn = savingsPool.totalSaved;
     }
 }
