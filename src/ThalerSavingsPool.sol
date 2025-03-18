@@ -1,8 +1,9 @@
 //SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.24;
 
 contract ThalerSavingsPool {
+    error TLR__InValidProof();
     error TLR__INVALID_INPUTS();
     error TLR_InvalidDuration();
     error TLR__SavingPoolEnded();
@@ -19,6 +20,8 @@ contract ThalerSavingsPool {
     uint256 private constant SIX_MONTHS = 15768000;
     uint256 private constant TWELVE_MONTHS = 31536000;
     uint256 public constant INTERVAL = 2628000; //1 month
+
+    IVerifier public verifier;
 
     struct SavingsPool {
         address user;
@@ -60,6 +63,10 @@ contract ThalerSavingsPool {
         uint256 numberOfDeposits,
         uint256 lastDepositedTimestamp
     );
+
+    constructor(address _verifier) {
+        verifier = IVerifier(_verifier);
+    }
 
     function createSavingsPoolERC20(
         address _tokenToSave,
@@ -206,6 +213,38 @@ contract ThalerSavingsPool {
             savingsPool.lastDepositedTimestamp
         );
     }
+
+    function withdrawFromEthSavingPool(bytes32 _savingsPoolId) public {
+        SavingsPool storage savingsPool = savingsPools[_savingsPoolId];
+        if (block.timestamp < savingsPool.endDate)
+            revert TLR__SavingPoolEnded();
+        if (msg.sender != savingsPool.user) revert TLR__INVALID_INPUTS();
+        if (savingsPool.totalSaved == 0) revert TLR__INVALID_INPUTS();
+
+        payable(msg.sender).transfer(savingsPool.totalSaved);
+        savingsPool.totalWithdrawn = savingsPool.totalSaved;
+    }
+
+    function withdrawFromERC20SavingPool(
+        bytes32 _savingsPoolId,
+        bytes calldata _proof,
+        bytes32[] calldata _publicInputs
+    ) public {
+        SavingsPool storage savingsPool = savingsPools[_savingsPoolId];
+        if (block.timestamp < savingsPool.endDate) {
+            if (verifier.verify(_proof, _publicInputs))
+                revert TLR__InValidProof();
+        }
+
+        if (msg.sender != savingsPool.user) revert TLR__INVALID_INPUTS();
+        if (savingsPool.totalSaved == 0) revert TLR__INVALID_INPUTS();
+
+        IERC20(savingsPool.tokenToSave).transfer(
+            msg.sender,
+            savingsPool.totalSaved
+        );
+        savingsPool.totalWithdrawn = savingsPool.totalSaved;
+    }
 }
 
 interface IERC20 {
@@ -221,6 +260,13 @@ interface IERC20 {
     ) external returns (bool);
 
     function balanceOf(address account) external view returns (uint256);
+}
+
+interface IVerifier {
+    function verify(
+        bytes calldata _proof,
+        bytes32[] calldata _publicInputs
+    ) external view returns (bool);
 }
 
 /**
