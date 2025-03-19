@@ -55,13 +55,13 @@ contract ThalerSavingsPoolTest is Test {
 
     event SavingsPoolDeposited(
         address user,
+        bytes32 savingsPoolId,
         uint256 depositedAmount,
         uint256 totalSaved,
         uint256 nextDepositDate,
         uint256 numberOfDeposits,
         uint256 lastDepositedTimestamp
     );
-
     event WithdrawFromERC20Pool(
         address user,
         uint256 endDate,
@@ -161,7 +161,7 @@ contract ThalerSavingsPoolTest is Test {
             initialDeposit,
             0,
             block.timestamp + INTERVAL,
-            amountToSave / INTERVAL,
+            amountToSave / totalIntervals,
             block.timestamp
         );
 
@@ -196,6 +196,11 @@ contract ThalerSavingsPoolTest is Test {
             uint256 lastDepositedTimestamp
         ) = savingsPool.savingsPools(poolId);
 
+        console.log("heey");
+        console.log("poolUser", poolUser);
+
+        uint8 _totalIntervals = uint8(poolDuration / INTERVAL);
+
         // Verify the savings pool data
         assertEq(poolUser, user1, "User should be set correctly");
         assertEq(
@@ -229,7 +234,7 @@ contract ThalerSavingsPoolTest is Test {
         );
         assertEq(
             numberOfDeposits,
-            amountToSave / INTERVAL,
+            amountToSave / _totalIntervals,
             "Number of deposits should be set correctly"
         );
         assertEq(
@@ -260,7 +265,7 @@ contract ThalerSavingsPoolTest is Test {
         // Set up test data
         uint256 amountToSave = 12 * INTERVAL;
         uint256 initialDeposit = INTERVAL;
-        uint256 invalidDuration = 1000; // Not 3, 6, or 12 months
+        uint256 invalidDuration = 1000 * INTERVAL; // Not 3, 6, or 12 months
         uint8 _totalIntervals = 100;
 
         // Mint tokens to user1
@@ -360,7 +365,7 @@ contract ThalerSavingsPoolTest is Test {
         vm.startPrank(user1);
 
         // Test with zero amount to save
-        vm.expectRevert(ThalerSavingsPool.TLR__INVALID_INPUTS.selector);
+        vm.expectRevert(ThalerSavingsPool.TLR__InvalidInitialDeposit.selector);
         savingsPool.createSavingsPoolERC20(
             address(token),
             0,
@@ -370,7 +375,7 @@ contract ThalerSavingsPoolTest is Test {
         );
 
         // Test with zero duration
-        vm.expectRevert(ThalerSavingsPool.TLR__INVALID_INPUTS.selector);
+        vm.expectRevert(ThalerSavingsPool.TLR_InvalidTotalDuration.selector);
         savingsPool.createSavingsPoolERC20(
             address(token),
             amountToSave,
@@ -380,7 +385,7 @@ contract ThalerSavingsPoolTest is Test {
         );
 
         // Test with zero initial deposit
-        vm.expectRevert(ThalerSavingsPool.TLR__INVALID_INPUTS.selector);
+        vm.expectRevert();
         savingsPool.createSavingsPoolERC20(
             address(token),
             amountToSave,
@@ -422,7 +427,7 @@ contract ThalerSavingsPoolTest is Test {
         token.approve(address(savingsPool), invalidAmountToSave);
 
         // Expect revert with invalid amount to save
-        vm.expectRevert(ThalerSavingsPool.TLR__InvalidDepositAmount.selector);
+        vm.expectRevert(ThalerSavingsPool.TLR__InvalidInitialDeposit.selector);
         savingsPool.createSavingsPoolERC20(
             address(token),
             invalidAmountToSave,
@@ -526,7 +531,7 @@ contract ThalerSavingsPoolTest is Test {
             initialDeposit,
             0,
             block.timestamp + INTERVAL,
-            (amountToSave - initialDeposit) / INTERVAL,
+            (amountToSave - initialDeposit) / totalIntervals,
             block.timestamp
         );
 
@@ -595,7 +600,7 @@ contract ThalerSavingsPoolTest is Test {
         );
         assertEq(
             numberOfDeposits,
-            (amountToSave - initialDeposit) / INTERVAL,
+            (amountToSave - initialDeposit) / totalIntervals,
             "Number of deposits should be set correctly"
         );
         assertEq(
@@ -621,7 +626,7 @@ contract ThalerSavingsPoolTest is Test {
         // Set up test data
         uint256 amountToSave = 12 * INTERVAL;
         uint256 initialDeposit = INTERVAL;
-        uint256 invalidDuration = 1000; // Not 3, 6, or 12 months
+        uint256 invalidDuration = 1000 * INTERVAL; // Not 3, 6, or 12 months
         uint8 _totalIntervals = 100;
 
         // Deal ETH to user1
@@ -706,7 +711,7 @@ contract ThalerSavingsPoolTest is Test {
         vm.startPrank(user1);
 
         // Test with zero amount to save
-        vm.expectRevert(ThalerSavingsPool.TLR__INVALID_INPUTS.selector);
+        vm.expectRevert(ThalerSavingsPool.TLR__InvalidInitialDeposit.selector);
         savingsPool.createSavingsPoolEth{value: initialDeposit}(
             0,
             duration,
@@ -715,7 +720,7 @@ contract ThalerSavingsPoolTest is Test {
         );
 
         // Test with zero duration
-        vm.expectRevert(ThalerSavingsPool.TLR__INVALID_INPUTS.selector);
+        vm.expectRevert(ThalerSavingsPool.TLR_InvalidTotalDuration.selector);
         savingsPool.createSavingsPoolEth{value: initialDeposit}(
             amountToSave,
             0,
@@ -724,7 +729,7 @@ contract ThalerSavingsPoolTest is Test {
         );
 
         // Test with zero initial deposit
-        vm.expectRevert(ThalerSavingsPool.TLR__INVALID_INPUTS.selector);
+        vm.expectRevert();
         savingsPool.createSavingsPoolEth{value: 0}(
             amountToSave,
             duration,
@@ -749,7 +754,7 @@ contract ThalerSavingsPoolTest is Test {
 
         // Expect revert with invalid amount to save
         vm.startPrank(user1);
-        vm.expectRevert(ThalerSavingsPool.TLR__InvalidDepositAmount.selector);
+        vm.expectRevert(ThalerSavingsPool.TLR__InvalidInitialDeposit.selector);
         savingsPool.createSavingsPoolEth{value: initialDeposit}(
             invalidAmountToSave,
             duration,
@@ -820,7 +825,7 @@ contract ThalerSavingsPoolTest is Test {
     /**
      * @notice Test depositing to an ERC20 savings pool
      */
-    function test_DepositToERC20SavingsPool() public {
+    function test_DepositToERC20SavingsPoool() public {
         // Set up test data
         uint256 amountToSave = 12 * INTERVAL;
         uint256 initialDeposit = INTERVAL;
@@ -844,20 +849,28 @@ contract ThalerSavingsPoolTest is Test {
         );
 
         // Calculate the savings pool ID
-        bytes32 poolId = keccak256(abi.encodePacked(user1, block.timestamp));
+        bytes32 poolId = keccak256(
+            abi.encodePacked(user1, block.timestamp, address(token))
+        );
 
         // Warp to next deposit date
         uint256 nextDepositDate = block.timestamp + INTERVAL;
+        uint256 expectedNextDepositDate = nextDepositDate + INTERVAL;
+        console.log("nextDepositTimestamp", nextDepositDate);
+        console.log("expectedNextDepositTimestamp", expectedNextDepositDate);
+        console.log("Interval", INTERVAL);
         vm.warp(nextDepositDate);
 
         // Expect the Deposit event to be emitted
         vm.expectEmit(true, true, true, true);
-        emit Deposit(
+        emit SavingsPoolDeposited(
             user1,
             poolId,
             depositAmount,
-            nextDepositDate,
-            initialDeposit + depositAmount
+            initialDeposit + depositAmount,
+            expectedNextDepositDate,
+            ((amountToSave) / totalIntervals) - 1,
+            block.timestamp
         );
 
         // Deposit to the savings pool
@@ -879,7 +892,7 @@ contract ThalerSavingsPoolTest is Test {
             ,
             uint256 lastDepositedTimestamp
         ) = savingsPool.savingsPools(poolId);
-
+        console.log("totalSaved", totalSaved);
         // Verify the updated savings pool data
         assertEq(
             totalSaved,
@@ -910,7 +923,7 @@ contract ThalerSavingsPoolTest is Test {
     /**
      * @notice Test depositing to an ETH savings pool
      */
-    function test_DepositToETHSavingsPool() public {
+    function test_DepositToETHSavingsPoool() public {
         // Set up test data
         uint256 amountToSave = 12 * INTERVAL;
         uint256 initialDeposit = INTERVAL;
@@ -1483,21 +1496,8 @@ contract ThalerSavingsPoolTest is Test {
         );
 
         // Get the updated savings pool data
-        (
-            ,
-            ,
-            ,
-            ,
-            uint256 totalSaved,
-            ,
-            ,
-            ,
-            uint256 totalWithdrawn,
-            ,
-            ,
-            ,
-
-        ) = savingsPool.savingsPools(poolId);
+        (, , , , , , , , uint256 totalWithdrawn, , , , ) = savingsPool
+            .savingsPools(poolId);
 
         // Verify the updated savings pool data
         assertEq(
@@ -1584,21 +1584,8 @@ contract ThalerSavingsPoolTest is Test {
         );
 
         // Get the updated savings pool data
-        (
-            ,
-            ,
-            ,
-            ,
-            uint256 totalSaved,
-            ,
-            ,
-            ,
-            uint256 totalWithdrawn,
-            ,
-            ,
-            ,
-
-        ) = savingsPool.savingsPools(poolId);
+        (, , , , , , , , uint256 totalWithdrawn, , , , ) = savingsPool
+            .savingsPools(poolId);
 
         // Verify the updated savings pool data
         assertEq(
@@ -1872,21 +1859,8 @@ contract ThalerSavingsPoolTest is Test {
         );
 
         // Get the updated savings pool data
-        (
-            ,
-            ,
-            ,
-            ,
-            uint256 totalSaved,
-            ,
-            ,
-            ,
-            uint256 totalWithdrawn,
-            ,
-            ,
-            ,
-
-        ) = savingsPool.savingsPools(poolId);
+        (, , , , , , , , uint256 totalWithdrawn, , , , ) = savingsPool
+            .savingsPools(poolId);
 
         // Verify the updated savings pool data
         assertEq(

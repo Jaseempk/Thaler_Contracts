@@ -102,6 +102,7 @@ contract ThalerSavingsPool {
      */
     event SavingsPoolDeposited(
         address user,
+        bytes32 savingsPoolId,
         uint256 depositedAmount,
         uint256 totalSaved,
         uint256 nextDepositDate,
@@ -193,10 +194,7 @@ contract ThalerSavingsPool {
 
         // Validate none of the inputs are zero or invalid
         if (
-            _amountToSave == 0 ||
-            _duration == 0 ||
-            _initialDeposit == 0 ||
-            _tokenToSave == address(0)
+            _duration == 0 || _initialDeposit == 0 || _tokenToSave == address(0)
         ) revert TLR__INVALID_INPUTS();
 
         // Validate duration is divisible by the interval
@@ -229,7 +227,7 @@ contract ThalerSavingsPool {
             endDate: block.timestamp + _duration,
             duration: _duration,
             startDate: block.timestamp,
-            totalSaved: 0,
+            totalSaved: _initialDeposit,
             tokenToSave: _tokenToSave,
             amountToSave: _amountToSave,
             initialDeposit: _initialDeposit,
@@ -373,6 +371,7 @@ contract ThalerSavingsPool {
         // Emit deposit event
         emit SavingsPoolDeposited(
             msg.sender,
+            _savingsPoolId,
             msg.value,
             savingsPool.totalSaved,
             savingsPool.nextDepositDate,
@@ -425,6 +424,7 @@ contract ThalerSavingsPool {
         // Emit deposit event
         emit SavingsPoolDeposited(
             msg.sender,
+            _savingsPoolId,
             _amountToDeposit,
             savingsPool.totalSaved,
             savingsPool.nextDepositDate,
