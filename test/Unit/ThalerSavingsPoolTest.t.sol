@@ -35,6 +35,7 @@ contract ThalerSavingsPoolTest is Test {
     bytes32 private savingsPoolId;
     bytes private mockProof;
     bytes32[] private mockPublicInputs;
+    uint8 private totalIntervals = 12;
 
     // Events to test
     event SavingsPoolCreated(
@@ -117,21 +118,6 @@ contract ThalerSavingsPoolTest is Test {
         vm.stopPrank();
     }
 
-    /*//////////////////////////////////////////////////////////////
-                        CONSTRUCTOR TESTS
-    //////////////////////////////////////////////////////////////*/
-
-    /**
-     * @notice Test that the constructor properly initializes the contract
-     */
-    function test_Constructor() public {
-        assertEq(
-            address(savingsPool.verifier()),
-            address(verifier),
-            "Verifier address should be set correctly"
-        );
-    }
-
     /**
      * @notice Test that the constructor reverts with zero address
      */
@@ -184,7 +170,8 @@ contract ThalerSavingsPoolTest is Test {
             address(token),
             amountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            totalIntervals
         );
 
         // Calculate the savings pool ID
@@ -205,6 +192,7 @@ contract ThalerSavingsPoolTest is Test {
             uint256 totalWithdrawn,
             uint256 nextDepositDate,
             uint256 numberOfDeposits,
+            ,
             uint256 lastDepositedTimestamp
         ) = savingsPool.savingsPools(poolId);
 
@@ -273,6 +261,7 @@ contract ThalerSavingsPoolTest is Test {
         uint256 amountToSave = 12 * INTERVAL;
         uint256 initialDeposit = INTERVAL;
         uint256 invalidDuration = 1000; // Not 3, 6, or 12 months
+        uint8 _totalIntervals = 100;
 
         // Mint tokens to user1
         vm.startPrank(deployer);
@@ -289,7 +278,8 @@ contract ThalerSavingsPoolTest is Test {
             address(token),
             amountToSave,
             invalidDuration,
-            initialDeposit
+            initialDeposit,
+            _totalIntervals
         );
 
         vm.stopPrank();
@@ -319,7 +309,8 @@ contract ThalerSavingsPoolTest is Test {
             address(token),
             amountToSave,
             duration,
-            invalidInitialDeposit
+            invalidInitialDeposit,
+            totalIntervals
         );
 
         vm.stopPrank();
@@ -333,6 +324,7 @@ contract ThalerSavingsPoolTest is Test {
         uint256 amountToSave = 10 * INTERVAL; // 10 months worth of savings
         uint256 initialDeposit = 3 * INTERVAL; // Not divisible evenly into amountToSave
         uint256 duration = TWELVE_MONTHS;
+        uint8 _totalIntervals = 10;
 
         // Mint tokens to user1
         vm.startPrank(deployer);
@@ -349,7 +341,8 @@ contract ThalerSavingsPoolTest is Test {
             address(token),
             amountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            _totalIntervals
         );
 
         vm.stopPrank();
@@ -372,7 +365,8 @@ contract ThalerSavingsPoolTest is Test {
             address(token),
             0,
             duration,
-            initialDeposit
+            initialDeposit,
+            totalIntervals
         );
 
         // Test with zero duration
@@ -381,7 +375,8 @@ contract ThalerSavingsPoolTest is Test {
             address(token),
             amountToSave,
             0,
-            initialDeposit
+            initialDeposit,
+            totalIntervals
         );
 
         // Test with zero initial deposit
@@ -390,7 +385,8 @@ contract ThalerSavingsPoolTest is Test {
             address(token),
             amountToSave,
             duration,
-            0
+            0,
+            totalIntervals
         );
 
         // Test with zero address token
@@ -399,7 +395,8 @@ contract ThalerSavingsPoolTest is Test {
             address(0),
             amountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            totalIntervals
         );
 
         vm.stopPrank();
@@ -413,6 +410,7 @@ contract ThalerSavingsPoolTest is Test {
         uint256 invalidAmountToSave = 10 * INTERVAL + 1; // Not divisible by interval
         uint256 initialDeposit = INTERVAL;
         uint256 duration = TWELVE_MONTHS;
+        uint8 _totalIntervals = 10;
 
         // Mint tokens to user1
         vm.startPrank(deployer);
@@ -429,7 +427,8 @@ contract ThalerSavingsPoolTest is Test {
             address(token),
             invalidAmountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            _totalIntervals
         );
 
         vm.stopPrank();
@@ -459,7 +458,8 @@ contract ThalerSavingsPoolTest is Test {
             address(token),
             amountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            totalIntervals
         );
 
         vm.stopPrank();
@@ -489,7 +489,8 @@ contract ThalerSavingsPoolTest is Test {
             address(token),
             amountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            totalIntervals
         );
 
         vm.stopPrank();
@@ -533,7 +534,8 @@ contract ThalerSavingsPoolTest is Test {
         savingsPool.createSavingsPoolEth{value: initialDeposit}(
             amountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            totalIntervals
         );
 
         // Calculate the savings pool ID
@@ -552,6 +554,7 @@ contract ThalerSavingsPoolTest is Test {
             uint256 totalWithdrawn,
             uint256 nextDepositDate,
             uint256 numberOfDeposits,
+            ,
             uint256 lastDepositedTimestamp
         ) = savingsPool.savingsPools(poolId);
 
@@ -619,6 +622,7 @@ contract ThalerSavingsPoolTest is Test {
         uint256 amountToSave = 12 * INTERVAL;
         uint256 initialDeposit = INTERVAL;
         uint256 invalidDuration = 1000; // Not 3, 6, or 12 months
+        uint8 _totalIntervals = 100;
 
         // Deal ETH to user1
         vm.deal(user1, initialDeposit);
@@ -629,7 +633,8 @@ contract ThalerSavingsPoolTest is Test {
         savingsPool.createSavingsPoolEth{value: initialDeposit}(
             amountToSave,
             invalidDuration,
-            initialDeposit
+            initialDeposit,
+            _totalIntervals
         );
 
         vm.stopPrank();
@@ -653,7 +658,8 @@ contract ThalerSavingsPoolTest is Test {
         savingsPool.createSavingsPoolEth{value: invalidInitialDeposit}(
             amountToSave,
             duration,
-            invalidInitialDeposit
+            invalidInitialDeposit,
+            totalIntervals
         );
 
         vm.stopPrank();
@@ -667,6 +673,7 @@ contract ThalerSavingsPoolTest is Test {
         uint256 amountToSave = 10 * INTERVAL; // 10 months worth of savings
         uint256 initialDeposit = 3 * INTERVAL; // Not divisible evenly into amountToSave
         uint256 duration = TWELVE_MONTHS;
+        uint8 _totalIntervals = 10;
 
         // Deal ETH to user1
         vm.deal(user1, initialDeposit);
@@ -677,7 +684,8 @@ contract ThalerSavingsPoolTest is Test {
         savingsPool.createSavingsPoolEth{value: initialDeposit}(
             amountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            _totalIntervals
         );
 
         vm.stopPrank();
@@ -702,7 +710,8 @@ contract ThalerSavingsPoolTest is Test {
         savingsPool.createSavingsPoolEth{value: initialDeposit}(
             0,
             duration,
-            initialDeposit
+            initialDeposit,
+            totalIntervals
         );
 
         // Test with zero duration
@@ -710,12 +719,18 @@ contract ThalerSavingsPoolTest is Test {
         savingsPool.createSavingsPoolEth{value: initialDeposit}(
             amountToSave,
             0,
-            initialDeposit
+            initialDeposit,
+            totalIntervals
         );
 
         // Test with zero initial deposit
         vm.expectRevert(ThalerSavingsPool.TLR__INVALID_INPUTS.selector);
-        savingsPool.createSavingsPoolEth{value: 0}(amountToSave, duration, 0);
+        savingsPool.createSavingsPoolEth{value: 0}(
+            amountToSave,
+            duration,
+            0,
+            totalIntervals
+        );
 
         vm.stopPrank();
     }
@@ -738,7 +753,8 @@ contract ThalerSavingsPoolTest is Test {
         savingsPool.createSavingsPoolEth{value: initialDeposit}(
             invalidAmountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            totalIntervals
         );
 
         vm.stopPrank();
@@ -765,7 +781,8 @@ contract ThalerSavingsPoolTest is Test {
         savingsPool.createSavingsPoolEth{value: sentEth}(
             amountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            totalIntervals
         );
 
         vm.stopPrank();
@@ -789,7 +806,8 @@ contract ThalerSavingsPoolTest is Test {
         savingsPool.createSavingsPoolEth{value: initialDeposit}(
             amountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            totalIntervals
         );
 
         vm.stopPrank();
@@ -821,7 +839,8 @@ contract ThalerSavingsPoolTest is Test {
             address(token),
             amountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            totalIntervals
         );
 
         // Calculate the savings pool ID
@@ -856,6 +875,7 @@ contract ThalerSavingsPoolTest is Test {
             ,
             ,
             uint256 updatedNextDepositDate,
+            ,
             ,
             uint256 lastDepositedTimestamp
         ) = savingsPool.savingsPools(poolId);
@@ -905,7 +925,8 @@ contract ThalerSavingsPoolTest is Test {
         savingsPool.createSavingsPoolEth{value: initialDeposit}(
             amountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            totalIntervals
         );
 
         // Calculate the savings pool ID
@@ -940,6 +961,7 @@ contract ThalerSavingsPoolTest is Test {
             ,
             ,
             uint256 updatedNextDepositDate,
+            ,
             ,
             uint256 lastDepositedTimestamp
         ) = savingsPool.savingsPools(poolId);
@@ -1009,7 +1031,8 @@ contract ThalerSavingsPoolTest is Test {
             address(token),
             amountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            totalIntervals
         );
 
         // Calculate the savings pool ID
@@ -1047,7 +1070,8 @@ contract ThalerSavingsPoolTest is Test {
             address(token),
             amountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            totalIntervals
         );
 
         // Calculate the savings pool ID
@@ -1084,7 +1108,8 @@ contract ThalerSavingsPoolTest is Test {
         savingsPool.createSavingsPoolEth{value: initialDeposit}(
             amountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            totalIntervals
         );
 
         // Calculate the savings pool ID
@@ -1119,7 +1144,8 @@ contract ThalerSavingsPoolTest is Test {
         savingsPool.createSavingsPoolEth{value: initialDeposit}(
             amountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            totalIntervals
         );
 
         // Calculate the savings pool ID
@@ -1157,7 +1183,8 @@ contract ThalerSavingsPoolTest is Test {
             address(token),
             amountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            totalIntervals
         );
 
         // Calculate the savings pool ID
@@ -1194,7 +1221,8 @@ contract ThalerSavingsPoolTest is Test {
         savingsPool.createSavingsPoolEth{value: initialDeposit}(
             amountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            totalIntervals
         );
 
         // Calculate the savings pool ID
@@ -1232,7 +1260,8 @@ contract ThalerSavingsPoolTest is Test {
             address(token),
             amountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            totalIntervals
         );
 
         // Calculate the savings pool ID
@@ -1270,7 +1299,8 @@ contract ThalerSavingsPoolTest is Test {
             address(token),
             amountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            totalIntervals
         );
 
         // Calculate the savings pool ID
@@ -1318,7 +1348,8 @@ contract ThalerSavingsPoolTest is Test {
             address(token),
             amountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            totalIntervals
         );
 
         // Calculate the savings pool ID
@@ -1361,7 +1392,8 @@ contract ThalerSavingsPoolTest is Test {
             address(token),
             amountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            totalIntervals
         );
 
         // Calculate the savings pool ID
@@ -1408,7 +1440,8 @@ contract ThalerSavingsPoolTest is Test {
             address(token),
             amountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            totalIntervals
         );
 
         // Calculate the savings pool ID
@@ -1462,6 +1495,7 @@ contract ThalerSavingsPoolTest is Test {
             uint256 totalWithdrawn,
             ,
             ,
+            ,
 
         ) = savingsPool.savingsPools(poolId);
 
@@ -1495,6 +1529,7 @@ contract ThalerSavingsPoolTest is Test {
         uint256 amountToSave = 3 * INTERVAL;
         uint256 initialDeposit = INTERVAL;
         uint256 duration = THREE_MONTHS;
+        uint8 _totalIntervals = 3;
 
         // Deal ETH to user1
         vm.deal(user1, amountToSave);
@@ -1504,7 +1539,8 @@ contract ThalerSavingsPoolTest is Test {
         savingsPool.createSavingsPoolEth{value: initialDeposit}(
             amountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            _totalIntervals
         );
 
         // Calculate the savings pool ID
@@ -1558,6 +1594,7 @@ contract ThalerSavingsPoolTest is Test {
             ,
             ,
             uint256 totalWithdrawn,
+            ,
             ,
             ,
 
@@ -1614,6 +1651,7 @@ contract ThalerSavingsPoolTest is Test {
         uint256 amountToSave = 3 * INTERVAL;
         uint256 initialDeposit = INTERVAL;
         uint256 duration = THREE_MONTHS;
+        uint8 _totalIntervals = 3;
 
         // Mint tokens to user1
         vm.startPrank(deployer);
@@ -1627,7 +1665,8 @@ contract ThalerSavingsPoolTest is Test {
             address(token),
             amountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            _totalIntervals
         );
 
         // Calculate the savings pool ID
@@ -1661,6 +1700,7 @@ contract ThalerSavingsPoolTest is Test {
         uint256 amountToSave = 3 * INTERVAL;
         uint256 initialDeposit = INTERVAL;
         uint256 duration = THREE_MONTHS;
+        uint8 _totalIntervals = 3;
 
         // Mint tokens to user1
         vm.startPrank(deployer);
@@ -1674,7 +1714,8 @@ contract ThalerSavingsPoolTest is Test {
             address(token),
             amountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            _totalIntervals
         );
 
         // Calculate the savings pool ID
@@ -1718,6 +1759,7 @@ contract ThalerSavingsPoolTest is Test {
         uint256 amountToSave = 3 * INTERVAL;
         uint256 initialDeposit = INTERVAL;
         uint256 duration = THREE_MONTHS;
+        uint8 _totalIntervals = 3;
 
         // Mint tokens to user1
         vm.startPrank(deployer);
@@ -1731,7 +1773,8 @@ contract ThalerSavingsPoolTest is Test {
             address(token),
             amountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            _totalIntervals
         );
 
         // Calculate the savings pool ID
@@ -1777,6 +1820,7 @@ contract ThalerSavingsPoolTest is Test {
         uint256 amountToSave = 3 * INTERVAL;
         uint256 initialDeposit = INTERVAL;
         uint256 duration = THREE_MONTHS;
+        uint8 _totalIntervals = 3;
 
         // Mint tokens to user1
         vm.startPrank(deployer);
@@ -1790,7 +1834,8 @@ contract ThalerSavingsPoolTest is Test {
             address(token),
             amountToSave,
             duration,
-            initialDeposit
+            initialDeposit,
+            _totalIntervals
         );
 
         // Calculate the savings pool ID
@@ -1839,6 +1884,7 @@ contract ThalerSavingsPoolTest is Test {
             uint256 totalWithdrawn,
             ,
             ,
+            ,
 
         ) = savingsPool.savingsPools(poolId);
 
@@ -1885,7 +1931,7 @@ contract ThalerSavingsPoolTest is Test {
 
         // Verify the proof
         vm.startPrank(user1);
-        bool result = savingsPool.verifyProof(proof, publicInputs);
+        bool result = IVerifier(address(verifier)).verify(proof, publicInputs);
         vm.stopPrank();
 
         // Verify the result
@@ -1926,7 +1972,7 @@ contract ThalerSavingsPoolTest is Test {
 
         // Verify the proof
         vm.startPrank(user1);
-        bool result = savingsPool.verifyProof(proof, publicInputs);
+        bool result = IVerifier(address(verifier)).verify(proof, publicInputs);
         vm.stopPrank();
 
         // Verify the result
@@ -1967,7 +2013,10 @@ contract ThalerSavingsPoolTest is Test {
 
         // Verify the proof
         vm.startPrank(user1);
-        bool result = savingsPool.verifyProof(emptyProof, publicInputs);
+        bool result = IVerifier(address(verifier)).verify(
+            emptyProof,
+            publicInputs
+        );
         vm.stopPrank();
 
         // Verify the result
@@ -1995,7 +2044,10 @@ contract ThalerSavingsPoolTest is Test {
 
         // Verify the proof
         vm.startPrank(user1);
-        bool result = savingsPool.verifyProof(proof, emptyPublicInputs);
+        bool result = IVerifier(address(verifier)).verify(
+            proof,
+            emptyPublicInputs
+        );
         vm.stopPrank();
 
         // Verify the result
