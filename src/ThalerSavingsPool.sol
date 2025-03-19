@@ -100,7 +100,7 @@ contract ThalerSavingsPool {
      * @param numberOfDeposits Updated number of deposits remaining
      * @param lastDepositedTimestamp Updated timestamp of the last deposit
      */
-    event SavingsPoolDeposited(
+    event SavingsPoolERC20Deposited(
         address user,
         bytes32 savingsPoolId,
         uint256 depositedAmount,
@@ -110,6 +110,15 @@ contract ThalerSavingsPool {
         uint256 lastDepositedTimestamp
     );
 
+    event SavingsPoolETHDeposited(
+        address user,
+        bytes32 savingsPoolId,
+        uint256 depositedAmount,
+        uint256 totalSaved,
+        uint256 nextDepositDate,
+        uint256 numberOfDeposits,
+        uint256 lastDepositedTimestamp
+    );
     /**
      * @notice Emitted when a user withdraws from an ERC20 savings pool
      * @param user Address of the user who withdrew
@@ -318,7 +327,7 @@ contract ThalerSavingsPool {
             initialDeposit: initialDeposit,
             totalWithdrawn: 0,
             nextDepositDate: block.timestamp + INTERVAL,
-            numberOfDeposits: remainingDepositAmount / _totalIntervals,
+            numberOfDeposits: _amountToSave / _totalIntervals,
             intervalAmount: (remainingDepositAmount * PRECISION) /
                 _totalIntervals,
             lastDepositedTimestamp: block.timestamp
@@ -369,7 +378,7 @@ contract ThalerSavingsPool {
         }
 
         // Emit deposit event
-        emit SavingsPoolDeposited(
+        emit SavingsPoolETHDeposited(
             msg.sender,
             _savingsPoolId,
             msg.value,
@@ -422,7 +431,7 @@ contract ThalerSavingsPool {
         }
 
         // Emit deposit event
-        emit SavingsPoolDeposited(
+        emit SavingsPoolERC20Deposited(
             msg.sender,
             _savingsPoolId,
             _amountToDeposit,
@@ -561,16 +570,13 @@ contract ThalerSavingsPool {
         );
 
         uint256 totalSaved = savingsPool.totalSaved;
+        address tokenToSave = savingsPool.tokenToSave;
 
         // Delete the savings pool
         delete savingsPools[_savingsPoolId];
 
         // Transfer tokens to the user
-        IERC20(savingsPool.tokenToSave).transferFrom(
-            address(this),
-            msg.sender,
-            totalSaved
-        );
+        IERC20(tokenToSave).transferFrom(address(this), msg.sender, totalSaved);
     }
 }
 
