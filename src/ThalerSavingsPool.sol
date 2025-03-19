@@ -13,12 +13,12 @@ contract ThalerSavingsPool {
     error TLR__InValidProof();
     error TLR__CallerNotOwner();
     error TLR__INVALID_INPUTS();
-    error TLR_InvalidDuration();
+    error TLR__InvalidDuration();
     error TLR__SavingPoolEnded();
     error TLR__NonExistentPool();
     error TLR__ExcessEthDeposit();
     error TLR__InsufficientSavings();
-    error TLR_InvalidTotalDuration();
+    error TLR__InvalidTotalDuration();
     error TLR__InvalidDepositAmount();
     error TLR__InvalidInitialDeposit();
     error TLR__InvalidEthDepositRatio();
@@ -50,11 +50,10 @@ contract ThalerSavingsPool {
         uint256 totalSaved; // Total amount saved so far
         address tokenToSave; // Token address (address(0) for ETH)
         uint256 amountToSave; // Total target amount to save
+        uint256 totalIntervals; // Amount to deposit at each interval
         uint256 initialDeposit; // Initial deposit amount
-        uint256 totalWithdrawn; // Total amount withdrawn
         uint256 nextDepositDate; // Timestamp for the next scheduled deposit
         uint256 numberOfDeposits; // Number of deposits remaining
-        uint256 intervalAmount; // Amount to deposit at each interval
         uint256 lastDepositedTimestamp; // Timestamp of the last deposit
     }
 
@@ -193,12 +192,13 @@ contract ThalerSavingsPool {
             _duration != THREE_MONTHS &&
             _duration != SIX_MONTHS &&
             _duration != TWELVE_MONTHS
-        ) revert TLR_InvalidTotalDuration();
+        ) revert TLR__InvalidTotalDuration();
 
         // Validate initial deposit is a proper fraction of total amount
         if (
             _initialDeposit > _amountToSave ||
-            _amountToSave % _initialDeposit != 0
+            _amountToSave % _initialDeposit != 0 ||
+            (_amountToSave / _totalIntervals) != _initialDeposit
         ) revert TLR__InvalidInitialDeposit();
 
         // Validate none of the inputs are zero or invalid
@@ -207,7 +207,7 @@ contract ThalerSavingsPool {
         ) revert TLR__INVALID_INPUTS();
 
         // Validate duration is divisible by the interval
-        if (_duration % INTERVAL != 0) revert TLR_InvalidDuration();
+        if (_duration % INTERVAL != 0) revert TLR__InvalidDuration();
 
         // Generate a unique ID for the savings pool
         bytes32 savingsPoolId = keccak256(
@@ -226,7 +226,7 @@ contract ThalerSavingsPool {
             _initialDeposit,
             0,
             block.timestamp + INTERVAL,
-            _amountToSave / _totalIntervals,
+            _totalIntervals,
             block.timestamp
         );
 
@@ -239,11 +239,10 @@ contract ThalerSavingsPool {
             totalSaved: _initialDeposit,
             tokenToSave: _tokenToSave,
             amountToSave: _amountToSave,
+            totalIntervals: _totalIntervals,
             initialDeposit: _initialDeposit,
-            totalWithdrawn: 0,
             nextDepositDate: block.timestamp + INTERVAL,
-            numberOfDeposits: _amountToSave / _totalIntervals,
-            intervalAmount: (_amountToSave * PRECISION) / _totalIntervals,
+            numberOfDeposits: _totalIntervals,
             lastDepositedTimestamp: block.timestamp
         });
 
@@ -273,12 +272,13 @@ contract ThalerSavingsPool {
             _duration != THREE_MONTHS &&
             _duration != SIX_MONTHS &&
             _duration != TWELVE_MONTHS
-        ) revert TLR_InvalidTotalDuration();
+        ) revert TLR__InvalidTotalDuration();
 
         // Validate initial deposit is a proper fraction of total amount
         if (
             initialDeposit > _amountToSave ||
-            _amountToSave % initialDeposit != 0
+            _amountToSave % initialDeposit != 0 ||
+            (_amountToSave / _totalIntervals) != initialDeposit
         ) revert TLR__InvalidInitialDeposit();
 
         // Validate none of the inputs are zero
@@ -286,13 +286,10 @@ contract ThalerSavingsPool {
             revert TLR__INVALID_INPUTS();
 
         // Validate duration is divisible by the interval
-        if (_duration % INTERVAL != 0) revert TLR_InvalidDuration();
+        if (_duration % INTERVAL != 0) revert TLR__InvalidDuration();
 
         // Validate sent ETH matches the initial deposit
         if (msg.value != initialDeposit) revert TLR__InvalidInitialETHDeposit();
-
-        // Calculate remaining deposit amount after initial deposit
-        uint256 remainingDepositAmount = _amountToSave - initialDeposit;
 
         // Generate a unique ID for the savings pool
         bytes32 savingsPoolId = keccak256(
@@ -311,7 +308,7 @@ contract ThalerSavingsPool {
             initialDeposit,
             0,
             block.timestamp + INTERVAL,
-            remainingDepositAmount / _totalIntervals,
+            _totalIntervals,
             block.timestamp
         );
 
@@ -324,12 +321,10 @@ contract ThalerSavingsPool {
             totalSaved: msg.value,
             tokenToSave: address(0),
             amountToSave: _amountToSave,
+            totalIntervals: _totalIntervals,
             initialDeposit: initialDeposit,
-            totalWithdrawn: 0,
             nextDepositDate: block.timestamp + INTERVAL,
-            numberOfDeposits: _amountToSave / _totalIntervals,
-            intervalAmount: (remainingDepositAmount * PRECISION) /
-                _totalIntervals,
+            numberOfDeposits: _totalIntervals,
             lastDepositedTimestamp: block.timestamp
         });
     }
@@ -339,13 +334,12 @@ contract ThalerSavingsPool {
      * @dev Requires ETH to be sent with the transaction
      * @param _savingsPoolId ID of the savings pool to deposit to
      */
-    function depositToEthSavingPool(bytes32 _savingsPoolId) public payable {
+    function depositToEthSavingPool(
+        bytes32 _savingsPoolId,
+        uint256 _depositAmount
+    ) public payable {
         // Get the savings pool from storage
         SavingsPool storage savingsPool = savingsPools[_savingsPoolId];
-
-        // Calculate remaining amount to be deposited
-        uint256 remainingDepositAmount = savingsPool.amountToSave -
-            savingsPool.totalSaved;
 
         if (savingsPool.user == address(0)) revert TLR__NonExistentPool();
 
@@ -361,11 +355,13 @@ contract ThalerSavingsPool {
             revert TLR__SavingPoolDepositIntervalNotYet();
 
         // Validate deposit amount is a proper ratio of the total amount
-        if (savingsPool.amountToSave % msg.value != 0)
-            revert TLR__InvalidEthDepositRatio();
+        if (_depositAmount != msg.value) revert TLR__InvalidEthDepositRatio();
 
         // Validate deposit doesn't exceed remaining amount
-        if (msg.value > remainingDepositAmount) revert TLR__ExcessEthDeposit();
+        if (
+            (savingsPool.amountToSave / savingsPool.totalIntervals) !=
+            _depositAmount
+        ) revert TLR__ExcessEthDeposit();
 
         // Update savings pool state
         savingsPool.totalSaved += msg.value;
@@ -469,11 +465,8 @@ contract ThalerSavingsPool {
             uint256 donationAmount = uint256(_publicInputs[3]);
 
             // Verify the proof is valid
-            if (verifier.verify(_proof, _publicInputs))
+            if (!verifier.verify(_proof, _publicInputs))
                 revert TLR__InValidProof();
-
-            // Additional verification could be added here, e.g.:
-            // require(donationAmount >= minimumRequiredDonation, "Donation too small");
 
             if ((savingsPool.endDate / 2) > block.timestamp) {
                 if (donationAmount < ((savingsPool.totalSaved) / 4))
@@ -533,7 +526,7 @@ contract ThalerSavingsPool {
             uint256 donationAmount = uint256(_publicInputs[3]);
 
             // Verify the proof is valid
-            if (verifier.verify(_proof, _publicInputs))
+            if (!verifier.verify(_proof, _publicInputs))
                 revert TLR__InValidProof();
 
             // Additional verification could be added here, e.g.:
@@ -615,23 +608,3 @@ interface IVerifier {
         bytes32[] calldata _publicInputs
     ) external view returns (bool);
 }
-
-/**
- * @notice User Flow:
- * 1. User opens the app
- * 2. Deposits funds to the inhouse wallet
- * 3. User creates a savings pool
- *
- * @notice Savings Pool:
- * - User sets the amount to save
- * - User sets the duration
- * - User sets the interval terms
- *
- * @notice Options:
- * - Either deposit first month's savings or deposit the amounts equivalent to multiples of the interval amount
- *
- * @notice Objectives:
- * - A function for user to create a savings pool
- * - A function for user to deposit funds to the savings pool based on the interval
- * - A function for user to withdraw funds from the savings pool
- */
