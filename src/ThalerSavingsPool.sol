@@ -15,16 +15,17 @@ contract ThalerSavingsPool {
     error TLR__INVALID_INPUTS();
     error TLR_InvalidDuration();
     error TLR__SavingPoolEnded();
+    error TLR__NonExistentPool();
     error TLR__ExcessEthDeposit();
+    error TLR__InsufficientSavings();
     error TLR_InvalidTotalDuration();
     error TLR__InvalidDepositAmount();
     error TLR__InvalidInitialDeposit();
     error TLR__InvalidEthDepositRatio();
     error TLR__InvalidEthDepositAmount();
     error TLR__InvalidInitialETHDeposit();
-    error TLR__SavingPoolDepositIntervalNotYet();
-    error TLR__InsufficientSavings();
     error TLR__InsufficientDonationAmount();
+    error TLR__SavingPoolDepositIntervalNotYet();
 
     // Time constants for savings pool durations
     uint256 private constant THREE_MONTHS = 7884000; // 3 months in seconds
@@ -32,6 +33,7 @@ contract ThalerSavingsPool {
     uint256 private constant TWELVE_MONTHS = 31536000; // 12 months in seconds
     uint256 public constant INTERVAL = 2628000; // 1 month in seconds - deposit interval
     uint256 public constant DONATION_RATIO = (3 / 25) * 100;
+    uint256 public constant PRECISION = 1e6;
 
     // Interface to the ZK proof verifier contract
     IVerifier public verifier;
@@ -52,6 +54,7 @@ contract ThalerSavingsPool {
         uint256 totalWithdrawn; // Total amount withdrawn
         uint256 nextDepositDate; // Timestamp for the next scheduled deposit
         uint256 numberOfDeposits; // Number of deposits remaining
+        uint256 intervalAmount; // Amount to deposit at each interval
         uint256 lastDepositedTimestamp; // Timestamp of the last deposit
     }
 
@@ -172,7 +175,8 @@ contract ThalerSavingsPool {
         address _tokenToSave,
         uint256 _amountToSave,
         uint256 _duration,
-        uint256 _initialDeposit
+        uint256 _initialDeposit,
+        uint8 _totalIntervals
     ) public {
         // Validate duration is one of the allowed values
         if (
@@ -195,9 +199,6 @@ contract ThalerSavingsPool {
             _tokenToSave == address(0)
         ) revert TLR__INVALID_INPUTS();
 
-        // Validate amount to save is divisible by the interval
-        if (_amountToSave % INTERVAL != 0) revert TLR__InvalidDepositAmount();
-
         // Validate duration is divisible by the interval
         if (_duration % INTERVAL != 0) revert TLR_InvalidDuration();
 
@@ -218,7 +219,7 @@ contract ThalerSavingsPool {
             _initialDeposit,
             0,
             block.timestamp + INTERVAL,
-            _amountToSave / INTERVAL,
+            _amountToSave / _totalIntervals,
             block.timestamp
         );
 
@@ -234,7 +235,8 @@ contract ThalerSavingsPool {
             initialDeposit: _initialDeposit,
             totalWithdrawn: 0,
             nextDepositDate: block.timestamp + INTERVAL,
-            numberOfDeposits: _amountToSave / INTERVAL,
+            numberOfDeposits: _amountToSave / _totalIntervals,
+            intervalAmount: (_amountToSave * PRECISION) / _totalIntervals,
             lastDepositedTimestamp: block.timestamp
         });
 
@@ -256,7 +258,8 @@ contract ThalerSavingsPool {
     function createSavingsPoolEth(
         uint256 _amountToSave,
         uint256 _duration,
-        uint256 initialDeposit
+        uint256 initialDeposit,
+        uint8 _totalIntervals
     ) public payable {
         // Validate duration is one of the allowed values
         if (
@@ -274,9 +277,6 @@ contract ThalerSavingsPool {
         // Validate none of the inputs are zero
         if (_amountToSave == 0 || _duration == 0 || initialDeposit == 0)
             revert TLR__INVALID_INPUTS();
-
-        // Validate amount to save is divisible by the interval
-        if (_amountToSave % INTERVAL != 0) revert TLR__InvalidDepositAmount();
 
         // Validate duration is divisible by the interval
         if (_duration % INTERVAL != 0) revert TLR_InvalidDuration();
@@ -304,7 +304,7 @@ contract ThalerSavingsPool {
             initialDeposit,
             0,
             block.timestamp + INTERVAL,
-            remainingDepositAmount / INTERVAL,
+            remainingDepositAmount / _totalIntervals,
             block.timestamp
         );
 
@@ -320,7 +320,9 @@ contract ThalerSavingsPool {
             initialDeposit: initialDeposit,
             totalWithdrawn: 0,
             nextDepositDate: block.timestamp + INTERVAL,
-            numberOfDeposits: remainingDepositAmount / INTERVAL,
+            numberOfDeposits: remainingDepositAmount / _totalIntervals,
+            intervalAmount: (remainingDepositAmount * PRECISION) /
+                _totalIntervals,
             lastDepositedTimestamp: block.timestamp
         });
     }
@@ -338,6 +340,11 @@ contract ThalerSavingsPool {
         uint256 remainingDepositAmount = savingsPool.amountToSave -
             savingsPool.totalSaved;
 
+        if (savingsPool.user == address(0)) revert TLR__NonExistentPool();
+
+        // Validate caller is the pool owner
+        if (savingsPool.user != msg.sender) revert TLR__CallerNotOwner();
+
         // Validate savings pool hasn't ended
         if (block.timestamp > savingsPool.endDate)
             revert TLR__SavingPoolEnded();
@@ -347,7 +354,7 @@ contract ThalerSavingsPool {
             revert TLR__SavingPoolDepositIntervalNotYet();
 
         // Validate deposit amount is a proper ratio of the total amount
-        if (msg.value % savingsPool.amountToSave != 0)
+        if (savingsPool.amountToSave % msg.value != 0)
             revert TLR__InvalidEthDepositRatio();
 
         // Validate deposit doesn't exceed remaining amount
@@ -385,6 +392,8 @@ contract ThalerSavingsPool {
         uint256 remainingDepositAmount = savingsPool.amountToSave -
             savingsPool.totalSaved;
 
+        if (savingsPool.user == address(0)) revert TLR__NonExistentPool();
+
         if (savingsPool.user != msg.sender) revert TLR__CallerNotOwner();
 
         // Validate savings pool hasn't ended
@@ -396,7 +405,7 @@ contract ThalerSavingsPool {
             revert TLR__SavingPoolDepositIntervalNotYet();
 
         // Validate deposit amount is a proper ratio of the total amount
-        if (_amountToDeposit % savingsPool.amountToSave != 0)
+        if (savingsPool.amountToSave % _amountToDeposit != 0)
             revert TLR__InvalidEthDepositRatio();
 
         // Validate deposit doesn't exceed remaining amount
@@ -421,6 +430,12 @@ contract ThalerSavingsPool {
             savingsPool.nextDepositDate,
             savingsPool.numberOfDeposits,
             savingsPool.lastDepositedTimestamp
+        );
+
+        IERC20(savingsPool.tokenToSave).transferFrom(
+            msg.sender,
+            address(this),
+            _amountToDeposit
         );
     }
 

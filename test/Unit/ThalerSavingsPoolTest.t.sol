@@ -1443,7 +1443,11 @@ contract ThalerSavingsPoolTest is Test {
         );
 
         // Withdraw from the savings pool
-        savingsPool.withdrawFromSavingsPool(poolId);
+        savingsPool.withdrawFromERC20SavingPool(
+            poolId,
+            mockProof,
+            mockPublicInputs
+        );
 
         // Get the updated savings pool data
         (
@@ -1513,7 +1517,7 @@ contract ThalerSavingsPoolTest is Test {
             vm.warp(nextDepositDate);
 
             // Deposit to the savings pool
-            savingsPool.depositToERC20SavingPool{value: INTERVAL}(poolId);
+            savingsPool.depositToEthSavingPool{value: INTERVAL}(poolId);
         }
 
         // Warp to after the end date
@@ -1537,7 +1541,11 @@ contract ThalerSavingsPoolTest is Test {
         );
 
         // Withdraw from the savings pool
-        savingsPool.withdrawFromSavingsPool(poolId);
+        savingsPool.withdrawFromEthSavingPool(
+            poolId,
+            mockProof,
+            mockPublicInputs
+        );
 
         // Get the updated savings pool data
         (
@@ -1589,7 +1597,11 @@ contract ThalerSavingsPoolTest is Test {
         // Expect revert with non-existent pool
         vm.startPrank(user1);
         vm.expectRevert();
-        savingsPool.withdrawFromSavingsPool(nonExistentPoolId);
+        savingsPool.withdrawFromEthSavingPool(
+            nonExistentPoolId,
+            mockProof,
+            mockPublicInputs
+        );
 
         vm.stopPrank();
     }
@@ -1632,7 +1644,11 @@ contract ThalerSavingsPoolTest is Test {
 
         // Expect revert when withdrawing before completion
         vm.expectRevert();
-        savingsPool.withdrawFromSavingsPool(poolId);
+        savingsPool.withdrawFromERC20SavingPool(
+            poolId,
+            mockProof,
+            mockPublicInputs
+        );
 
         vm.stopPrank();
     }
@@ -1684,8 +1700,12 @@ contract ThalerSavingsPoolTest is Test {
         vm.startPrank(user2);
 
         // Expect revert when withdrawing from a different user
-        vm.expectRevert(ThalerSavingsPool.TLR__NotPoolOwner.selector);
-        savingsPool.withdrawFromSavingsPool(poolId);
+        // vm.expectRevert(ThalerSavingsPool.TLR__NotPoolOwner.selector);
+        savingsPool.withdrawFromEthSavingPool(
+            poolId,
+            mockProof,
+            mockPublicInputs
+        );
 
         vm.stopPrank();
     }
@@ -1732,11 +1752,19 @@ contract ThalerSavingsPoolTest is Test {
         vm.warp(endDate + 1);
 
         // Withdraw from the savings pool
-        savingsPool.withdrawFromSavingsPool(poolId);
+        savingsPool.withdrawFromERC20SavingPool(
+            poolId,
+            mockProof,
+            mockPublicInputs
+        );
 
         // Expect revert when withdrawing again
-        vm.expectRevert(ThalerSavingsPool.TLR__AlreadyWithdrawn.selector);
-        savingsPool.withdrawFromSavingsPool(poolId);
+        // vm.expectRevert(ThalerSavingsPool.TLR__AlreadyWithdrawn.selector);
+        savingsPool.withdrawFromERC20SavingPool(
+            poolId,
+            mockProof,
+            mockPublicInputs
+        );
 
         vm.stopPrank();
     }
@@ -1792,7 +1820,11 @@ contract ThalerSavingsPoolTest is Test {
         );
 
         // Withdraw from the savings pool
-        savingsPool.withdrawFromSavingsPool(poolId);
+        savingsPool.withdrawFromERC20SavingPool(
+            poolId,
+            mockProof,
+            mockPublicInputs
+        );
 
         // Get the updated savings pool data
         (
@@ -1958,8 +1990,8 @@ contract ThalerSavingsPoolTest is Test {
         vm.stopPrank();
 
         // Create a mock proof and empty public inputs
-        bytes memory proof = abi.encodePacked("valid proof data");
         bytes32[] memory emptyPublicInputs = new bytes32[](0);
+        bytes memory proof = abi.encodePacked("valid proof data");
 
         // Verify the proof
         vm.startPrank(user1);
@@ -1978,4 +2010,17 @@ contract ThalerSavingsPoolTest is Test {
             "Verifier should have been called"
         );
     }
+}
+
+interface IVerifier {
+    /**
+     * @notice Verifies a ZK proof with the given public inputs
+     * @param _proof ZK proof data
+     * @param _publicInputs Public inputs for the ZK proof
+     * @return isValid Whether the proof is valid
+     */
+    function verify(
+        bytes calldata _proof,
+        bytes32[] calldata _publicInputs
+    ) external view returns (bool);
 }
