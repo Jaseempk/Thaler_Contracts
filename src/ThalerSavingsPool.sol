@@ -38,13 +38,6 @@ contract ThalerSavingsPool {
     // Interface to the ZK proof verifier contract
     IVerifier public verifier;
 
-    //79228162514.26434e13
-    //1742495650
-    //1774011742
-    //79228162514.26434e13
-    //4722.366482869645e6
-    //309485009.8213451e11
-
     /**
      * @notice Structure to store savings pool details
      * @dev All time-related fields are stored as Unix timestamps
@@ -70,31 +63,31 @@ contract ThalerSavingsPool {
     /**
      * @notice Emitted when a new savings pool is created
      * @param user Address of the user who created the pool
-     * @param endDate Timestamp when the savings period ends
      * @param duration Total duration of the savings pool in seconds
-     * @param startDate Timestamp when the savings pool was created
+     * @param numberOfDeposits Number of deposits remaining
      * @param totalSaved Initial amount saved
      * @param tokenToSave Token address (address(0) for ETH)
      * @param amountToSave Total target amount to save
+     * @param totalIntervals Amount to deposit at each interval
      * @param initialDeposit Initial deposit amount
-     * @param totalWithdrawn Total amount withdrawn (0 at creation)
+     * @param endDate Timestamp when the savings period ends
+     * @param startDate Timestamp when the savings pool was created
      * @param nextDepositDate Timestamp for the next scheduled deposit
-     * @param numberOfDeposits Number of deposits remaining
      * @param lastDepositedTimestamp Timestamp of the initial deposit
      */
     event SavingsPoolCreated(
         address user,
-        uint256 endDate,
-        uint256 duration,
-        uint256 startDate,
-        uint256 totalSaved,
+        uint64 duration,
+        uint32 numberOfDeposits,
+        uint88 totalSaved,
         address tokenToSave,
-        uint256 amountToSave,
-        uint256 initialDeposit,
-        uint256 totalWithdrawn,
-        uint256 nextDepositDate,
-        uint256 numberOfDeposits,
-        uint256 lastDepositedTimestamp
+        uint88 amountToSave,
+        uint8 totalIntervals,
+        uint88 initialDeposit,
+        uint48 endDate,
+        uint48 startDate,
+        uint48 nextDepositDate,
+        uint48 lastDepositedTimestamp
     );
 
     /**
@@ -109,22 +102,33 @@ contract ThalerSavingsPool {
     event SavingsPoolERC20Deposited(
         address user,
         bytes32 savingsPoolId,
-        uint256 depositedAmount,
-        uint256 totalSaved,
-        uint256 nextDepositDate,
-        uint256 numberOfDeposits,
-        uint256 lastDepositedTimestamp
+        uint88 depositedAmount,
+        uint88 totalSaved,
+        uint48 nextDepositDate,
+        uint32 numberOfDeposits,
+        uint48 lastDepositedTimestamp
     );
 
+    /**
+     * @notice Emitted when a user deposits ETH into a savings pool
+     * @param user The address of the user who made the deposit
+     * @param savingsPoolId The unique identifier of the savings pool
+     * @param depositedAmount The amount of ETH deposited in this transaction
+     * @param totalSaved The total amount saved in the pool after this deposit
+     * @param nextDepositDate The timestamp when the next deposit is due
+     * @param numberOfDeposits The total number of deposits made to this pool
+     * @param lastDepositedTimestamp The timestamp when this deposit was made
+     */
     event SavingsPoolETHDeposited(
         address user,
         bytes32 savingsPoolId,
-        uint256 depositedAmount,
-        uint256 totalSaved,
-        uint256 nextDepositDate,
-        uint256 numberOfDeposits,
-        uint256 lastDepositedTimestamp
+        uint88 depositedAmount,
+        uint88 totalSaved,
+        uint48 nextDepositDate,
+        uint32 numberOfDeposits,
+        uint48 lastDepositedTimestamp
     );
+
     /**
      * @notice Emitted when a user withdraws from an ERC20 savings pool
      * @param user Address of the user who withdrew
@@ -139,14 +143,14 @@ contract ThalerSavingsPool {
      */
     event WithdrawFromERC20Pool(
         address user,
-        uint256 endDate,
-        uint256 startDate,
-        uint256 timeStamp,
-        uint256 totalSaved,
+        uint48 endDate,
+        uint48 startDate,
+        uint48 timeStamp,
+        uint88 totalSaved,
         address tokenSaved,
-        uint256 poolDuration,
+        uint64 poolDuration,
         bytes32 savingsPoolId,
-        uint256 totalWithdrawn
+        uint88 totalWithdrawn
     );
 
     /**
@@ -162,13 +166,13 @@ contract ThalerSavingsPool {
      */
     event WithdrawFromEthPool(
         address user,
-        uint256 endDate,
-        uint256 startDate,
-        uint256 timeStamp,
-        uint256 totalSaved,
-        uint256 poolDuration,
+        uint48 endDate,
+        uint48 startDate,
+        uint48 timeStamp,
+        uint88 totalSaved,
+        uint64 poolDuration,
         bytes32 savingsPoolId,
-        uint256 totalWithdrawn
+        uint88 totalWithdrawn
     );
 
     /**
@@ -224,35 +228,19 @@ contract ThalerSavingsPool {
         // Emit event for savings pool creation
         emit SavingsPoolCreated(
             msg.sender,
-            block.timestamp + _duration,
             _duration,
-            block.timestamp,
+            _totalIntervals,
             _initialDeposit,
             _tokenToSave,
             _amountToSave,
-            _initialDeposit,
-            0,
-            block.timestamp + INTERVAL,
             _totalIntervals,
-            block.timestamp
+            _initialDeposit,
+            uint48(block.timestamp + _duration),
+            uint48(block.timestamp),
+            uint48(block.timestamp + INTERVAL),
+            uint48(block.timestamp)
         );
 
-        /**
-         *     struct SavingsPool {
-        address user; // Owner of the savings pool
-        uint64 duration; // Total duration of the savings pool in seconds
-        uint32 numberOfDeposits; // Number of deposits remaining
-        uint88 totalSaved; // Total amount saved so far
-        address tokenToSave; // Token address (address(0) for ETH)
-        uint88 amountToSave; // Total target amount to save
-        uint8 totalIntervals; // Amount to deposit at each interval
-        uint88 initialDeposit; // Initial deposit amount
-        uint48 endDate; // Timestamp when the savings period ends
-        uint48 startDate; // Timestamp when the savings pool was created
-        uint48 nextDepositDate; // Timestamp for the next scheduled deposit
-        uint48 lastDepositedTimestamp; // Timestamp of the last deposit
-    }
-         */
         // Create the savings pool in storage
         savingsPools[savingsPoolId] = SavingsPool({
             user: msg.sender,
@@ -323,17 +311,17 @@ contract ThalerSavingsPool {
         // Emit event for savings pool creation
         emit SavingsPoolCreated(
             msg.sender,
-            block.timestamp + _duration,
             _duration,
-            block.timestamp,
+            _totalIntervals,
             _initialDeposit,
             address(0),
             _amountToSave,
-            _initialDeposit,
-            0,
-            block.timestamp + INTERVAL,
             _totalIntervals,
-            block.timestamp
+            _initialDeposit,
+            uint48(block.timestamp + _duration),
+            uint48(block.timestamp),
+            uint48(block.timestamp + INTERVAL),
+            uint48(block.timestamp)
         );
 
         // Create the savings pool in storage
@@ -360,7 +348,7 @@ contract ThalerSavingsPool {
      */
     function depositToEthSavingPool(
         bytes32 _savingsPoolId,
-        uint256 _depositAmount
+        uint88 _depositAmount
     ) public payable {
         // Get the savings pool from storage
         SavingsPool storage savingsPool = savingsPools[_savingsPoolId];
@@ -401,7 +389,7 @@ contract ThalerSavingsPool {
         emit SavingsPoolETHDeposited(
             msg.sender,
             _savingsPoolId,
-            msg.value,
+            uint88(msg.value),
             savingsPool.totalSaved,
             savingsPool.nextDepositDate,
             savingsPool.numberOfDeposits,
@@ -514,7 +502,7 @@ contract ThalerSavingsPool {
             msg.sender,
             savingsPool.endDate,
             savingsPool.startDate,
-            block.timestamp,
+            uint48(block.timestamp),
             savingsPool.totalSaved,
             savingsPool.duration,
             _savingsPoolId,
@@ -578,7 +566,7 @@ contract ThalerSavingsPool {
             msg.sender,
             savingsPool.endDate,
             savingsPool.startDate,
-            block.timestamp,
+            uint48(block.timestamp),
             savingsPool.totalSaved,
             savingsPool.tokenToSave,
             savingsPool.duration,
