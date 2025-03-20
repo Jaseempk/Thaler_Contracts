@@ -28,15 +28,22 @@ contract ThalerSavingsPool {
     error TLR__SavingPoolDepositIntervalNotYet();
 
     // Time constants for savings pool durations
-    uint256 private constant THREE_MONTHS = 7884000; // 3 months in seconds
-    uint256 private constant SIX_MONTHS = 15768000; // 6 months in seconds
-    uint256 private constant TWELVE_MONTHS = 31536000; // 12 months in seconds
-    uint256 public constant INTERVAL = 2628000; // 1 month in seconds - deposit interval
-    uint256 public constant DONATION_RATIO = (3 / 25) * 100;
-    uint256 public constant PRECISION = 1e6;
+    uint48 private constant THREE_MONTHS = 7884000; // 3 months in seconds
+    uint48 private constant SIX_MONTHS = 15768000; // 6 months in seconds
+    uint48 private constant TWELVE_MONTHS = 31536000; // 12 months in seconds
+    uint48 public constant INTERVAL = 2628000; // 1 month in seconds - deposit interval
+    uint8 public constant DONATION_RATIO = ((3 * 100) / 25);
+    uint48 public constant PRECISION = 1e6;
 
     // Interface to the ZK proof verifier contract
     IVerifier public verifier;
+
+    //79228162514.26434e13
+    //1742495650
+    //1774011742
+    //79228162514.26434e13
+    //4722.366482869645e6
+    //309485009.8213451e11
 
     /**
      * @notice Structure to store savings pool details
@@ -44,17 +51,17 @@ contract ThalerSavingsPool {
      */
     struct SavingsPool {
         address user; // Owner of the savings pool
-        uint256 endDate; // Timestamp when the savings period ends
-        uint256 duration; // Total duration of the savings pool in seconds
-        uint256 startDate; // Timestamp when the savings pool was created
-        uint256 totalSaved; // Total amount saved so far
+        uint64 duration; // Total duration of the savings pool in seconds
+        uint32 numberOfDeposits; // Number of deposits remaining
+        uint88 totalSaved; // Total amount saved so far
         address tokenToSave; // Token address (address(0) for ETH)
-        uint256 amountToSave; // Total target amount to save
-        uint256 totalIntervals; // Amount to deposit at each interval
-        uint256 initialDeposit; // Initial deposit amount
-        uint256 nextDepositDate; // Timestamp for the next scheduled deposit
-        uint256 numberOfDeposits; // Number of deposits remaining
-        uint256 lastDepositedTimestamp; // Timestamp of the last deposit
+        uint88 amountToSave; // Total target amount to save
+        uint8 totalIntervals; // Amount to deposit at each interval
+        uint88 initialDeposit; // Initial deposit amount
+        uint48 endDate; // Timestamp when the savings period ends
+        uint48 startDate; // Timestamp when the savings pool was created
+        uint48 nextDepositDate; // Timestamp for the next scheduled deposit
+        uint48 lastDepositedTimestamp; // Timestamp of the last deposit
     }
 
     // Mapping from savings pool ID to savings pool details
@@ -182,9 +189,9 @@ contract ThalerSavingsPool {
      */
     function createSavingsPoolERC20(
         address _tokenToSave,
-        uint256 _amountToSave,
-        uint256 _duration,
-        uint256 _initialDeposit,
+        uint88 _amountToSave,
+        uint64 _duration,
+        uint88 _initialDeposit,
         uint8 _totalIntervals
     ) public {
         // Validate duration is one of the allowed values
@@ -230,20 +237,36 @@ contract ThalerSavingsPool {
             block.timestamp
         );
 
+        /**
+         *     struct SavingsPool {
+        address user; // Owner of the savings pool
+        uint64 duration; // Total duration of the savings pool in seconds
+        uint32 numberOfDeposits; // Number of deposits remaining
+        uint88 totalSaved; // Total amount saved so far
+        address tokenToSave; // Token address (address(0) for ETH)
+        uint88 amountToSave; // Total target amount to save
+        uint8 totalIntervals; // Amount to deposit at each interval
+        uint88 initialDeposit; // Initial deposit amount
+        uint48 endDate; // Timestamp when the savings period ends
+        uint48 startDate; // Timestamp when the savings pool was created
+        uint48 nextDepositDate; // Timestamp for the next scheduled deposit
+        uint48 lastDepositedTimestamp; // Timestamp of the last deposit
+    }
+         */
         // Create the savings pool in storage
         savingsPools[savingsPoolId] = SavingsPool({
             user: msg.sender,
-            endDate: block.timestamp + _duration,
             duration: _duration,
-            startDate: block.timestamp,
+            numberOfDeposits: _totalIntervals,
             totalSaved: _initialDeposit,
             tokenToSave: _tokenToSave,
             amountToSave: _amountToSave,
             totalIntervals: _totalIntervals,
             initialDeposit: _initialDeposit,
-            nextDepositDate: block.timestamp + INTERVAL,
-            numberOfDeposits: _totalIntervals,
-            lastDepositedTimestamp: block.timestamp
+            endDate: uint48(block.timestamp + _duration),
+            startDate: uint48(block.timestamp),
+            nextDepositDate: uint48(block.timestamp) + INTERVAL,
+            lastDepositedTimestamp: uint48(block.timestamp)
         });
 
         // Transfer initial deposit from user to contract
@@ -259,12 +282,12 @@ contract ThalerSavingsPool {
      * @dev Requires the initial deposit to be sent with the transaction
      * @param _amountToSave Total target amount to save in wei
      * @param _duration Duration of the savings pool (must be 3, 6, or 12 months)
-     * @param initialDeposit Initial deposit amount in wei
+     * @param _initialDeposit Initial deposit amount in wei
      */
     function createSavingsPoolEth(
-        uint256 _amountToSave,
-        uint256 _duration,
-        uint256 initialDeposit,
+        uint88 _amountToSave,
+        uint64 _duration,
+        uint88 _initialDeposit,
         uint8 _totalIntervals
     ) public payable {
         // Validate duration is one of the allowed values
@@ -276,20 +299,21 @@ contract ThalerSavingsPool {
 
         // Validate initial deposit is a proper fraction of total amount
         if (
-            initialDeposit > _amountToSave ||
-            _amountToSave % initialDeposit != 0 ||
-            (_amountToSave / _totalIntervals) != initialDeposit
+            _initialDeposit > _amountToSave ||
+            _amountToSave % _initialDeposit != 0 ||
+            (_amountToSave / _totalIntervals) != _initialDeposit
         ) revert TLR__InvalidInitialDeposit();
 
         // Validate none of the inputs are zero
-        if (_amountToSave == 0 || _duration == 0 || initialDeposit == 0)
+        if (_amountToSave == 0 || _duration == 0 || _initialDeposit == 0)
             revert TLR__INVALID_INPUTS();
 
         // Validate duration is divisible by the interval
         if (_duration % INTERVAL != 0) revert TLR__InvalidDuration();
 
         // Validate sent ETH matches the initial deposit
-        if (msg.value != initialDeposit) revert TLR__InvalidInitialETHDeposit();
+        if (msg.value != _initialDeposit)
+            revert TLR__InvalidInitialETHDeposit();
 
         // Generate a unique ID for the savings pool
         bytes32 savingsPoolId = keccak256(
@@ -302,10 +326,10 @@ contract ThalerSavingsPool {
             block.timestamp + _duration,
             _duration,
             block.timestamp,
-            initialDeposit,
+            _initialDeposit,
             address(0),
             _amountToSave,
-            initialDeposit,
+            _initialDeposit,
             0,
             block.timestamp + INTERVAL,
             _totalIntervals,
@@ -315,17 +339,17 @@ contract ThalerSavingsPool {
         // Create the savings pool in storage
         savingsPools[savingsPoolId] = SavingsPool({
             user: msg.sender,
-            endDate: block.timestamp + _duration,
             duration: _duration,
-            startDate: block.timestamp,
-            totalSaved: msg.value,
+            numberOfDeposits: _totalIntervals,
+            totalSaved: _initialDeposit,
             tokenToSave: address(0),
             amountToSave: _amountToSave,
             totalIntervals: _totalIntervals,
-            initialDeposit: initialDeposit,
-            nextDepositDate: block.timestamp + INTERVAL,
-            numberOfDeposits: _totalIntervals,
-            lastDepositedTimestamp: block.timestamp
+            initialDeposit: _initialDeposit,
+            endDate: uint48(block.timestamp + _duration),
+            startDate: uint48(block.timestamp),
+            nextDepositDate: uint48(block.timestamp) + INTERVAL,
+            lastDepositedTimestamp: uint48(block.timestamp)
         });
     }
 
@@ -364,9 +388,9 @@ contract ThalerSavingsPool {
         ) revert TLR__ExcessEthDeposit();
 
         // Update savings pool state
-        savingsPool.totalSaved += msg.value;
+        savingsPool.totalSaved += uint88(msg.value);
         savingsPool.numberOfDeposits -= 1;
-        savingsPool.lastDepositedTimestamp = block.timestamp;
+        savingsPool.lastDepositedTimestamp = uint48(block.timestamp);
 
         // Update next deposit date if there are more deposits remaining
         if (savingsPool.numberOfDeposits > 0) {
@@ -387,7 +411,7 @@ contract ThalerSavingsPool {
 
     function depositToERC20SavingPool(
         bytes32 _savingsPoolId,
-        uint256 _amountToDeposit
+        uint88 _amountToDeposit
     ) public {
         // Get the savings pool from storage
         SavingsPool storage savingsPool = savingsPools[_savingsPoolId];
@@ -419,7 +443,7 @@ contract ThalerSavingsPool {
         // Update savings pool state
         savingsPool.totalSaved += _amountToDeposit;
         savingsPool.numberOfDeposits -= 1;
-        savingsPool.lastDepositedTimestamp = block.timestamp;
+        savingsPool.lastDepositedTimestamp = uint48(block.timestamp);
 
         // Update next deposit date if there are more deposits remaining
         if (savingsPool.numberOfDeposits > 0) {
