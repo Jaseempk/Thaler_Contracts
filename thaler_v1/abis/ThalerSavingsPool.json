@@ -1,0 +1,471 @@
+[
+  {
+    "inputs": [
+      { "internalType": "address", "name": "_verifier", "type": "address" }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  { "inputs": [], "name": "TLR__CallerNotOwner", "type": "error" },
+  { "inputs": [], "name": "TLR__ExcessEthDeposit", "type": "error" },
+  { "inputs": [], "name": "TLR__INVALID_INPUTS", "type": "error" },
+  { "inputs": [], "name": "TLR__InValidProof", "type": "error" },
+  { "inputs": [], "name": "TLR__InsufficientDonationAmount", "type": "error" },
+  { "inputs": [], "name": "TLR__InsufficientSavings", "type": "error" },
+  { "inputs": [], "name": "TLR__InvalidDepositAmount", "type": "error" },
+  { "inputs": [], "name": "TLR__InvalidDuration", "type": "error" },
+  { "inputs": [], "name": "TLR__InvalidEthDepositAmount", "type": "error" },
+  { "inputs": [], "name": "TLR__InvalidEthDepositRatio", "type": "error" },
+  { "inputs": [], "name": "TLR__InvalidInitialDeposit", "type": "error" },
+  { "inputs": [], "name": "TLR__InvalidInitialETHDeposit", "type": "error" },
+  { "inputs": [], "name": "TLR__InvalidTotalDuration", "type": "error" },
+  { "inputs": [], "name": "TLR__NonExistentPool", "type": "error" },
+  {
+    "inputs": [],
+    "name": "TLR__SavingPoolDepositIntervalNotYet",
+    "type": "error"
+  },
+  { "inputs": [], "name": "TLR__SavingPoolEnded", "type": "error" },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint64",
+        "name": "duration",
+        "type": "uint64"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint32",
+        "name": "numberOfDeposits",
+        "type": "uint32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint88",
+        "name": "totalSaved",
+        "type": "uint88"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "tokenToSave",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint88",
+        "name": "amountToSave",
+        "type": "uint88"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "totalIntervals",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint88",
+        "name": "initialDeposit",
+        "type": "uint88"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint48",
+        "name": "endDate",
+        "type": "uint48"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint48",
+        "name": "startDate",
+        "type": "uint48"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint48",
+        "name": "nextDepositDate",
+        "type": "uint48"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint48",
+        "name": "lastDepositedTimestamp",
+        "type": "uint48"
+      }
+    ],
+    "name": "SavingsPoolCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "savingsPoolId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint88",
+        "name": "depositedAmount",
+        "type": "uint88"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint88",
+        "name": "totalSaved",
+        "type": "uint88"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint48",
+        "name": "nextDepositDate",
+        "type": "uint48"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint32",
+        "name": "numberOfDeposits",
+        "type": "uint32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint48",
+        "name": "lastDepositedTimestamp",
+        "type": "uint48"
+      }
+    ],
+    "name": "SavingsPoolERC20Deposited",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "savingsPoolId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint88",
+        "name": "depositedAmount",
+        "type": "uint88"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint88",
+        "name": "totalSaved",
+        "type": "uint88"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint48",
+        "name": "nextDepositDate",
+        "type": "uint48"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint32",
+        "name": "numberOfDeposits",
+        "type": "uint32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint48",
+        "name": "lastDepositedTimestamp",
+        "type": "uint48"
+      }
+    ],
+    "name": "SavingsPoolETHDeposited",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint48",
+        "name": "endDate",
+        "type": "uint48"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint48",
+        "name": "startDate",
+        "type": "uint48"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint48",
+        "name": "timeStamp",
+        "type": "uint48"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint88",
+        "name": "totalSaved",
+        "type": "uint88"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "tokenSaved",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint64",
+        "name": "poolDuration",
+        "type": "uint64"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "savingsPoolId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint88",
+        "name": "totalWithdrawn",
+        "type": "uint88"
+      }
+    ],
+    "name": "WithdrawFromERC20Pool",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint48",
+        "name": "endDate",
+        "type": "uint48"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint48",
+        "name": "startDate",
+        "type": "uint48"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint48",
+        "name": "timeStamp",
+        "type": "uint48"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint88",
+        "name": "totalSaved",
+        "type": "uint88"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint64",
+        "name": "poolDuration",
+        "type": "uint64"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "savingsPoolId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint88",
+        "name": "totalWithdrawn",
+        "type": "uint88"
+      }
+    ],
+    "name": "WithdrawFromEthPool",
+    "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "DONATION_RATIO",
+    "outputs": [{ "internalType": "uint8", "name": "", "type": "uint8" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "INTERVAL",
+    "outputs": [{ "internalType": "uint48", "name": "", "type": "uint48" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "PRECISION",
+    "outputs": [{ "internalType": "uint48", "name": "", "type": "uint48" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "_tokenToSave", "type": "address" },
+      { "internalType": "uint88", "name": "_amountToSave", "type": "uint88" },
+      { "internalType": "uint64", "name": "_duration", "type": "uint64" },
+      { "internalType": "uint88", "name": "_initialDeposit", "type": "uint88" },
+      { "internalType": "uint8", "name": "_totalIntervals", "type": "uint8" }
+    ],
+    "name": "createSavingsPoolERC20",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint88", "name": "_amountToSave", "type": "uint88" },
+      { "internalType": "uint64", "name": "_duration", "type": "uint64" },
+      { "internalType": "uint88", "name": "_initialDeposit", "type": "uint88" },
+      { "internalType": "uint8", "name": "_totalIntervals", "type": "uint8" }
+    ],
+    "name": "createSavingsPoolEth",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_savingsPoolId",
+        "type": "bytes32"
+      },
+      { "internalType": "uint88", "name": "_amountToDeposit", "type": "uint88" }
+    ],
+    "name": "depositToERC20SavingPool",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_savingsPoolId",
+        "type": "bytes32"
+      },
+      { "internalType": "uint88", "name": "_depositAmount", "type": "uint88" }
+    ],
+    "name": "depositToEthSavingPool",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }],
+    "name": "savingsPools",
+    "outputs": [
+      { "internalType": "address", "name": "user", "type": "address" },
+      { "internalType": "uint64", "name": "duration", "type": "uint64" },
+      {
+        "internalType": "uint32",
+        "name": "numberOfDeposits",
+        "type": "uint32"
+      },
+      { "internalType": "uint88", "name": "totalSaved", "type": "uint88" },
+      { "internalType": "address", "name": "tokenToSave", "type": "address" },
+      { "internalType": "uint88", "name": "amountToSave", "type": "uint88" },
+      { "internalType": "uint8", "name": "totalIntervals", "type": "uint8" },
+      { "internalType": "uint88", "name": "initialDeposit", "type": "uint88" },
+      { "internalType": "uint48", "name": "endDate", "type": "uint48" },
+      { "internalType": "uint48", "name": "startDate", "type": "uint48" },
+      { "internalType": "uint48", "name": "nextDepositDate", "type": "uint48" },
+      {
+        "internalType": "uint48",
+        "name": "lastDepositedTimestamp",
+        "type": "uint48"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "verifier",
+    "outputs": [
+      { "internalType": "contract IVerifier", "name": "", "type": "address" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_savingsPoolId",
+        "type": "bytes32"
+      },
+      { "internalType": "bytes", "name": "_proof", "type": "bytes" },
+      {
+        "internalType": "bytes32[]",
+        "name": "_publicInputs",
+        "type": "bytes32[]"
+      }
+    ],
+    "name": "withdrawFromERC20SavingPool",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_savingsPoolId",
+        "type": "bytes32"
+      },
+      { "internalType": "bytes", "name": "_proof", "type": "bytes" },
+      {
+        "internalType": "bytes32[]",
+        "name": "_publicInputs",
+        "type": "bytes32[]"
+      }
+    ],
+    "name": "withdrawFromEthSavingPool",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]

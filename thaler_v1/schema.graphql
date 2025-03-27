@@ -1,0 +1,77 @@
+type SavingsPoolCreated @entity(immutable: true) {
+  id: Bytes!
+  user: Bytes! # address
+  duration: BigInt! # uint64
+  numberOfDeposits: BigInt! # uint32
+  totalSaved: BigInt! # uint88
+  tokenToSave: Bytes! # address
+  amountToSave: BigInt! # uint88
+  totalIntervals: Int! # uint8
+  initialDeposit: BigInt! # uint88
+  endDate: BigInt! # uint48
+  startDate: BigInt! # uint48
+  nextDepositDate: BigInt! # uint48
+  lastDepositedTimestamp: BigInt! # uint48
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type SavingsPoolERC20Deposited @entity(immutable: true) {
+  id: Bytes!
+  user: Bytes! # address
+  savingsPoolId: Bytes! # bytes32
+  depositedAmount: BigInt! # uint88
+  totalSaved: BigInt! # uint88
+  nextDepositDate: BigInt! # uint48
+  numberOfDeposits: BigInt! # uint32
+  lastDepositedTimestamp: BigInt! # uint48
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type SavingsPoolETHDeposited @entity(immutable: true) {
+  id: Bytes!
+  user: Bytes! # address
+  savingsPoolId: Bytes! # bytes32
+  depositedAmount: BigInt! # uint88
+  totalSaved: BigInt! # uint88
+  nextDepositDate: BigInt! # uint48
+  numberOfDeposits: BigInt! # uint32
+  lastDepositedTimestamp: BigInt! # uint48
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type WithdrawFromERC20Pool @entity(immutable: true) {
+  id: Bytes!
+  user: Bytes! # address
+  endDate: BigInt! # uint48
+  startDate: BigInt! # uint48
+  timeStamp: BigInt! # uint48
+  totalSaved: BigInt! # uint88
+  tokenSaved: Bytes! # address
+  poolDuration: BigInt! # uint64
+  savingsPoolId: Bytes! # bytes32
+  totalWithdrawn: BigInt! # uint88
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type WithdrawFromEthPool @entity(immutable: true) {
+  id: Bytes!
+  user: Bytes! # address
+  endDate: BigInt! # uint48
+  startDate: BigInt! # uint48
+  timeStamp: BigInt! # uint48
+  totalSaved: BigInt! # uint88
+  poolDuration: BigInt! # uint64
+  savingsPoolId: Bytes! # bytes32
+  totalWithdrawn: BigInt! # uint88
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
