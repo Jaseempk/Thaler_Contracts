@@ -1,0 +1,49 @@
+import {
+  assert,
+  describe,
+  test,
+  clearStore,
+  beforeAll,
+  afterAll
+} from "matchstick-as/assembly/index"
+import { Address, BigInt, Bytes } from "@graphprotocol/graph-ts"
+import { CharityWhitelisted } from "../generated/schema"
+import { CharityWhitelisted as CharityWhitelistedEvent } from "../generated/ThalerSavingsPool/ThalerSavingsPool"
+import { handleCharityWhitelisted } from "../src/thaler-savings-pool"
+import { createCharityWhitelistedEvent } from "./thaler-savings-pool-utils"
+
+// Tests structure (matchstick-as >=0.5.0)
+// https://thegraph.com/docs/en/developer/matchstick/#tests-structure-0-5-0
+
+describe("Describe entity assertions", () => {
+  beforeAll(() => {
+    let charityAddress = Address.fromString(
+      "0x0000000000000000000000000000000000000001"
+    )
+    let newCharityWhitelistedEvent =
+      createCharityWhitelistedEvent(charityAddress)
+    handleCharityWhitelisted(newCharityWhitelistedEvent)
+  })
+
+  afterAll(() => {
+    clearStore()
+  })
+
+  // For more test scenarios, see:
+  // https://thegraph.com/docs/en/developer/matchstick/#write-a-unit-test
+
+  test("CharityWhitelisted created and stored", () => {
+    assert.entityCount("CharityWhitelisted", 1)
+
+    // 0xa16081f360e3847006db660bae1c6d1b2e17ec2a is the default address used in newMockEvent() function
+    assert.fieldEquals(
+      "CharityWhitelisted",
+      "0xa16081f360e3847006db660bae1c6d1b2e17ec2a-1",
+      "charityAddress",
+      "0x0000000000000000000000000000000000000001"
+    )
+
+    // More assert options:
+    // https://thegraph.com/docs/en/developer/matchstick/#asserts
+  })
+})
