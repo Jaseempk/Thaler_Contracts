@@ -19,6 +19,8 @@ contract ThalerSavingsPoolTest is Test {
     uint48 private constant INTERVAL = 2628000; // 1 month in seconds
     uint256 private constant DONATION_RATIO = (3 / 25) * 100;
 
+    address public charityAddress = makeAddr("charity");
+
     // Test accounts
     address private deployer = makeAddr("deployer");
     address private user1 = makeAddr("user1");
@@ -115,7 +117,7 @@ contract ThalerSavingsPoolTest is Test {
         verifier = new MockVerifier();
 
         // Deploy the ThalerSavingsPool contract
-        savingsPool = new ThalerSavingsPool(address(verifier));
+        savingsPool = new ThalerSavingsPool();
 
         // Initialize mock proof data
         mockProof = abi.encode("mock proof data");
@@ -126,14 +128,6 @@ contract ThalerSavingsPoolTest is Test {
         mockPublicInputs[3] = bytes32(uint256(1 ether)); // donation_amount
 
         vm.stopPrank();
-    }
-
-    /**
-     * @notice Test that the constructor reverts with zero address
-     */
-    function test_Constructor_ZeroAddress() public {
-        vm.expectRevert();
-        new ThalerSavingsPool(address(0));
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -1486,11 +1480,7 @@ contract ThalerSavingsPoolTest is Test {
 
         vm.prank(user1);
         // Withdraw from the savings pool
-        savingsPool.withdrawFromERC20SavingPool(
-            poolId,
-            mockProof,
-            mockPublicInputs
-        );
+        savingsPool.withdrawFromERC20SavingPool(poolId, charityAddress);
 
         // Verify token balance
         assertEq(
@@ -1567,11 +1557,7 @@ contract ThalerSavingsPoolTest is Test {
         );
 
         // Withdraw from the savings pool
-        savingsPool.withdrawFromEthSavingPool(
-            poolId,
-            mockProof,
-            mockPublicInputs
-        );
+        savingsPool.withdrawFromEthSavingPool(poolId, charityAddress);
 
         // Verify ETH balance
         assertEq(
@@ -1602,8 +1588,7 @@ contract ThalerSavingsPoolTest is Test {
         vm.expectRevert();
         savingsPool.withdrawFromEthSavingPool(
             nonExistentPoolId,
-            mockProof,
-            mockPublicInputs
+            charityAddress
         );
 
         vm.stopPrank();
@@ -1649,11 +1634,7 @@ contract ThalerSavingsPoolTest is Test {
 
         // Expect revert when withdrawing before completion
         vm.expectRevert();
-        savingsPool.withdrawFromERC20SavingPool(
-            poolId,
-            mockProof,
-            mockPublicInputs
-        );
+        savingsPool.withdrawFromERC20SavingPool(poolId, charityAddress);
 
         vm.stopPrank();
     }
@@ -1708,11 +1689,7 @@ contract ThalerSavingsPoolTest is Test {
 
         // Expect revert when withdrawing from a different user
         // vm.expectRevert(ThalerSavingsPool.TLR__NotPoolOwner.selector);
-        savingsPool.withdrawFromEthSavingPool(
-            poolId,
-            mockProof,
-            mockPublicInputs
-        );
+        savingsPool.withdrawFromEthSavingPool(poolId, charityAddress);
 
         vm.stopPrank();
     }
@@ -1761,19 +1738,11 @@ contract ThalerSavingsPoolTest is Test {
         vm.warp(endDate + 1);
 
         // Withdraw from the savings pool
-        savingsPool.withdrawFromERC20SavingPool(
-            poolId,
-            mockProof,
-            mockPublicInputs
-        );
+        savingsPool.withdrawFromERC20SavingPool(poolId, charityAddress);
 
         // Expect revert when withdrawing again
         // vm.expectRevert(ThalerSavingsPool.TLR__AlreadyWithdrawn.selector);
-        savingsPool.withdrawFromERC20SavingPool(
-            poolId,
-            mockProof,
-            mockPublicInputs
-        );
+        savingsPool.withdrawFromERC20SavingPool(poolId, charityAddress);
 
         vm.stopPrank();
     }
@@ -1831,11 +1800,7 @@ contract ThalerSavingsPoolTest is Test {
         );
 
         // Withdraw from the savings pool
-        savingsPool.withdrawFromERC20SavingPool(
-            poolId,
-            mockProof,
-            mockPublicInputs
-        );
+        savingsPool.withdrawFromERC20SavingPool(poolId, charityAddress);
 
         // Verify token balance
         assertEq(
@@ -1851,170 +1816,4 @@ contract ThalerSavingsPoolTest is Test {
 
         vm.stopPrank();
     }
-
-    /*//////////////////////////////////////////////////////////////
-                    ZK PROOF VERIFICATION TESTS
-    //////////////////////////////////////////////////////////////*/
-
-    /**
-     * @notice Test verifying a valid ZK proof
-     */
-    function test_VerifyZKProof_Valid() public {
-        // Set up mock verifier to return true
-        vm.startPrank(deployer);
-        verifier.setVerificationResult(true);
-        vm.stopPrank();
-
-        // Create a mock proof and public inputs
-        bytes memory proof = abi.encodePacked("valid proof data");
-        bytes32[] memory publicInputs = new bytes32[](2);
-        publicInputs[0] = keccak256("input1");
-        publicInputs[1] = keccak256("input2");
-
-        // Verify the proof
-        vm.startPrank(user1);
-        bool result = IVerifier(address(verifier)).verify(proof, publicInputs);
-        vm.stopPrank();
-
-        // Verify the result
-        assertTrue(result, "Proof verification should succeed");
-
-        // Verify that the verifier was called with the correct inputs
-        assertTrue(
-            verifier.verificationCalled(),
-            "Verifier should have been called"
-        );
-        assertEq(verifier.lastProof(), proof, "Proof should match");
-        assertEq(
-            verifier.lastPublicInputs(0),
-            publicInputs[0],
-            "Public input 0 should match"
-        );
-        assertEq(
-            verifier.lastPublicInputs(1),
-            publicInputs[1],
-            "Public input 1 should match"
-        );
-    }
-
-    /**
-     * @notice Test verifying an invalid ZK proof
-     */
-    function test_VerifyZKProof_Invalid() public {
-        // Set up mock verifier to return false
-        vm.startPrank(deployer);
-        verifier.setVerificationResult(false);
-        vm.stopPrank();
-
-        // Create a mock proof and public inputs
-        bytes memory proof = abi.encodePacked("invalid proof data");
-        bytes32[] memory publicInputs = new bytes32[](2);
-        publicInputs[0] = keccak256("input1");
-        publicInputs[1] = keccak256("input2");
-
-        // Verify the proof
-        vm.startPrank(user1);
-        bool result = IVerifier(address(verifier)).verify(proof, publicInputs);
-        vm.stopPrank();
-
-        // Verify the result
-        assertFalse(result, "Proof verification should fail");
-
-        // Verify that the verifier was called with the correct inputs
-        assertTrue(
-            verifier.verificationCalled(),
-            "Verifier should have been called"
-        );
-        assertEq(verifier.lastProof(), proof, "Proof should match");
-        assertEq(
-            verifier.lastPublicInputs(0),
-            publicInputs[0],
-            "Public input 0 should match"
-        );
-        assertEq(
-            verifier.lastPublicInputs(1),
-            publicInputs[1],
-            "Public input 1 should match"
-        );
-    }
-
-    /**
-     * @notice Test verifying a ZK proof with empty proof data
-     */
-    function test_VerifyZKProof_EmptyProof() public {
-        // Set up mock verifier to return false
-        vm.startPrank(deployer);
-        verifier.setVerificationResult(false);
-        vm.stopPrank();
-
-        // Create empty proof and public inputs
-        bytes memory emptyProof = new bytes(0);
-        bytes32[] memory publicInputs = new bytes32[](2);
-        publicInputs[0] = keccak256("input1");
-        publicInputs[1] = keccak256("input2");
-
-        // Verify the proof
-        vm.startPrank(user1);
-        bool result = IVerifier(address(verifier)).verify(
-            emptyProof,
-            publicInputs
-        );
-        vm.stopPrank();
-
-        // Verify the result
-        assertFalse(result, "Proof verification should fail with empty proof");
-
-        // Verify that the verifier was called
-        assertTrue(
-            verifier.verificationCalled(),
-            "Verifier should have been called"
-        );
-    }
-
-    /**
-     * @notice Test verifying a ZK proof with empty public inputs
-     */
-    function test_VerifyZKProof_EmptyPublicInputs() public {
-        // Set up mock verifier to return false
-        vm.startPrank(deployer);
-        verifier.setVerificationResult(false);
-        vm.stopPrank();
-
-        // Create a mock proof and empty public inputs
-        bytes32[] memory emptyPublicInputs = new bytes32[](0);
-        bytes memory proof = abi.encodePacked("valid proof data");
-
-        // Verify the proof
-        vm.startPrank(user1);
-        bool result = IVerifier(address(verifier)).verify(
-            proof,
-            emptyPublicInputs
-        );
-        vm.stopPrank();
-
-        // Verify the result
-        assertFalse(
-            result,
-            "Proof verification should fail with empty public inputs"
-        );
-
-        // Verify that the verifier was called
-        assertTrue(
-            verifier.verificationCalled(),
-            "Verifier should have been called"
-        );
-    }
-}
-
-interface IVerifier {
-    /**
-     * @notice Verifies a ZK proof with the given public inputs
-     * @param _proof ZK proof data
-     * @param _publicInputs Public inputs for the ZK proof
-     * @return isValid Whether the proof is valid
-     */
-    function verify(
-        bytes calldata _proof,
-        bytes32[] calldata _publicInputs
-    ) external view returns (bool);
 }

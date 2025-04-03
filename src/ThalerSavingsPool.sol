@@ -10,33 +10,29 @@ pragma solidity ^0.8.24;
  */
 contract ThalerSavingsPool {
     // Custom errors for better gas efficiency and clarity
-    error TLR__InValidProof();
+    error TLR__OnlyOwner();
     error TLR__CallerNotOwner();
     error TLR__INVALID_INPUTS();
+    error TLR__DonationFailed();
     error TLR__InvalidDuration();
     error TLR__SavingPoolEnded();
     error TLR__NonExistentPool();
     error TLR__ExcessEthDeposit();
+    error TLR__AlreadyWhitelisted();
     error TLR__InsufficientSavings();
     error TLR__InvalidTotalDuration();
-    error TLR__InvalidDepositAmount();
+    error TLR__InvalidCharityAddress();
+    error TLR__CharityNotWhitelisted();
     error TLR__InvalidInitialDeposit();
     error TLR__InvalidEthDepositRatio();
-    error TLR__InvalidEthDepositAmount();
     error TLR__InvalidInitialETHDeposit();
-    error TLR__InsufficientDonationAmount();
     error TLR__SavingPoolDepositIntervalNotYet();
 
     // Time constants for savings pool durations
-    uint48 private constant THREE_MONTHS = 7884000; // 3 months in seconds
-    uint48 private constant SIX_MONTHS = 15768000; // 6 months in seconds
+    uint48 private constant THREE_MONTHS = 7776000; // 3 months in seconds
+    uint48 private constant SIX_MONTHS = 15552000; // 6 months in seconds
     uint48 private constant TWELVE_MONTHS = 31536000; // 12 months in seconds
-    uint48 public constant INTERVAL = 2628000; // 1 month in seconds - deposit interval
-    uint8 public constant DONATION_RATIO = ((3 * 100) / 25);
-    uint48 public constant PRECISION = 1e6;
-
-    // Interface to the ZK proof verifier contract
-    IVerifier public verifier;
+    uint48 public constant INTERVAL = 2592000; // 1 month in seconds - deposit interval
 
     /**
      * @notice Structure to store savings pool details
@@ -57,8 +53,12 @@ contract ThalerSavingsPool {
         uint48 lastDepositedTimestamp; // Timestamp of the last deposit
     }
 
+    address private owner;
+
     // Mapping from savings pool ID to savings pool details
     mapping(bytes32 => SavingsPool) public savingsPools;
+
+    mapping(address => bool) public isWhitelistedCharity;
 
     /**
      * @notice Emitted when a new savings pool is created
@@ -176,11 +176,32 @@ contract ThalerSavingsPool {
     );
 
     /**
-     * @notice Contract constructor
-     * @param _verifier Address of the ZK proof verifier contract
+     * @notice Emitted when a user makes an early withdrawal and donates penalty fees to charity
+     * @param user Address of the user making early withdrawal
+     * @param charityAddress Address of the charity receiving the donation
+     * @param amountDonated Amount donated to charity from early withdrawal penalty
+     * @param tokenToSave Address of the token that was withdrawn early
      */
-    constructor(address _verifier) {
-        verifier = IVerifier(_verifier);
+    event EarlyWithdrawalDonation(
+        address user,
+        address charityAddress,
+        uint256 amountDonated,
+        address tokenToSave
+    );
+
+    /**
+     * @notice Emitted when a charity is whitelisted
+     * @param charityAddress Address of the whitelisted charity
+     */
+    event CharityWhitelisted(address charityAddress);
+
+    modifier onlyOwner() {
+        if (msg.sender != owner) revert TLR__OnlyOwner();
+        _;
+    }
+
+    constructor() {
+        owner = msg.sender;
     }
 
     /**
@@ -460,35 +481,30 @@ contract ThalerSavingsPool {
      * @notice Withdraws ETH from a savings pool after it has ended
      * @dev Only the pool owner can withdraw, and only after the end date
      * @param _savingsPoolId ID of the savings pool to withdraw from
-     * @param _proof ZK proof data verifying a valid donation was made
-     * @param _publicInputs Public inputs for the ZK proof (includes donation details)
+     * @param _charityAddress Address of the charity to donate to when early withdrawing
      */
     function withdrawFromEthSavingPool(
         bytes32 _savingsPoolId,
-        bytes calldata _proof,
-        bytes32[] calldata _publicInputs
+        address _charityAddress
     ) public {
         // Get the savings pool from storage
         SavingsPool storage savingsPool = savingsPools[_savingsPoolId];
 
         // Validate savings pool has ended
         if (block.timestamp < savingsPool.endDate) {
-            // Extract donation amount from public inputs (4th parameter)
-            uint256 donationAmount = uint256(_publicInputs[3]);
+            if (_charityAddress == address(0))
+                revert TLR__InvalidCharityAddress();
 
-            // Verify the proof is valid
-            if (!verifier.verify(_proof, _publicInputs))
-                revert TLR__InValidProof();
+            uint256 donationAmount = (savingsPool.endDate / 2) > block.timestamp
+                ? ((savingsPool.totalSaved) / 4)
+                : ((savingsPool.totalSaved) / 8);
 
-            if ((savingsPool.endDate / 2) > block.timestamp) {
-                if (donationAmount < ((savingsPool.totalSaved) / 4))
-                    revert TLR__InsufficientDonationAmount();
-            } else {
-                if (
-                    donationAmount <
-                    (((savingsPool.totalSaved) * DONATION_RATIO) / 100)
-                ) revert TLR__InsufficientDonationAmount();
-            }
+            bool success = earlyWithdrawalDonation(
+                donationAmount,
+                _charityAddress,
+                savingsPool.tokenToSave
+            );
+            if (success == false) revert TLR__DonationFailed();
         }
 
         // Validate caller is the pool owner
@@ -514,45 +530,40 @@ contract ThalerSavingsPool {
         delete savingsPools[_savingsPoolId];
 
         // Transfer ETH to the user
-        payable(msg.sender).transfer(totalSaved);
+        (bool _success, ) = payable(msg.sender).call{value: totalSaved}("");
+
+        require(_success, "ETH transfer failed");
     }
 
     /**
      * @notice Withdraws ERC20 tokens from a savings pool
      * @dev Can withdraw early if a valid ZK proof is provided
      * @param _savingsPoolId ID of the savings pool to withdraw from
-     * @param _proof ZK proof data verifying a valid donation was made
-     * @param _publicInputs Public inputs for the ZK proof (includes donation details)
+     * @param _charityAddress Address of the charity to donate to when early withdrawing
      */
     function withdrawFromERC20SavingPool(
         bytes32 _savingsPoolId,
-        bytes calldata _proof,
-        bytes32[] calldata _publicInputs
+        address _charityAddress
     ) public {
         // Get the savings pool from storage
         SavingsPool storage savingsPool = savingsPools[_savingsPoolId];
 
-        // If withdrawing early, verify the ZK proof
+        // If withdrawing early, donate
         if (block.timestamp < savingsPool.endDate) {
+            if (_charityAddress == address(0))
+                revert TLR__InvalidCharityAddress();
+
             // Extract donation amount from public inputs (4th parameter)
-            uint256 donationAmount = uint256(_publicInputs[3]);
+            uint256 donationAmount = (savingsPool.endDate / 2) > block.timestamp
+                ? ((savingsPool.totalSaved) / 4)
+                : ((savingsPool.totalSaved) / 8);
 
-            // Verify the proof is valid
-            if (!verifier.verify(_proof, _publicInputs))
-                revert TLR__InValidProof();
-
-            // Additional verification could be added here, e.g.:
-            // require(donationAmount >= minimumRequiredDonation, "Donation too small");
-
-            if ((savingsPool.endDate / 2) > block.timestamp) {
-                if (donationAmount < ((savingsPool.totalSaved) / 4))
-                    revert TLR__InsufficientDonationAmount();
-            } else {
-                if (
-                    donationAmount <
-                    (((savingsPool.totalSaved) * DONATION_RATIO) / 100)
-                ) revert TLR__InsufficientDonationAmount();
-            }
+            bool success = earlyWithdrawalDonation(
+                donationAmount,
+                _charityAddress,
+                savingsPool.tokenToSave
+            );
+            if (success == false) revert TLR__DonationFailed();
         }
 
         // Validate caller is the pool owner
@@ -583,6 +594,42 @@ contract ThalerSavingsPool {
         // Transfer tokens to the user
         IERC20(tokenToSave).transferFrom(address(this), msg.sender, totalSaved);
     }
+
+    function earlyWithdrawalDonation(
+        uint256 amountToDonate,
+        address charityAddress,
+        address _tokenToSave
+    ) internal returns (bool success) {
+        if (isWhitelistedCharity[charityAddress] == false)
+            revert TLR__CharityNotWhitelisted();
+
+        emit EarlyWithdrawalDonation(
+            msg.sender,
+            charityAddress,
+            amountToDonate,
+            _tokenToSave
+        );
+        if (_tokenToSave != address(0)) {
+            return
+                success = IERC20(_tokenToSave).transferFrom(
+                    msg.sender,
+                    charityAddress,
+                    amountToDonate
+                );
+        } else {
+            (success, ) = payable(charityAddress).call{value: amountToDonate}(
+                ""
+            );
+            return success;
+        }
+    }
+
+    function whitelistCharity(address charityAddress) public onlyOwner {
+        if (isWhitelistedCharity[charityAddress])
+            revert TLR__AlreadyWhitelisted();
+        emit CharityWhitelisted(charityAddress);
+        isWhitelistedCharity[charityAddress] = true;
+    }
 }
 
 /**
@@ -602,21 +649,4 @@ interface IERC20 {
     ) external returns (bool);
 
     function balanceOf(address account) external view returns (uint256);
-}
-
-/**
- * @title IVerifier
- * @dev Interface for the ZK proof verifier
- */
-interface IVerifier {
-    /**
-     * @notice Verifies a ZK proof with the given public inputs
-     * @param _proof ZK proof data
-     * @param _publicInputs Public inputs for the ZK proof
-     * @return isValid Whether the proof is valid
-     */
-    function verify(
-        bytes calldata _proof,
-        bytes32[] calldata _publicInputs
-    ) external view returns (bool);
 }
