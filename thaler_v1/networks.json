@@ -1,8 +1,0 @@
-{
-  "base-sepolia": {
-    "ThalerSavingsPool": {
-      "address": "0x4c0cB3c185D3E1d8B276dbB3AcebCc3298CA418F",
-      "startBlock": 23371246
-    }
-  }
-}
