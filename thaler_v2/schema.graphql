@@ -20,6 +20,7 @@ type EarlyWithdrawalDonation @entity(immutable: true) {
 type SavingsPoolCreated @entity(immutable: true) {
   id: Bytes!
   user: Bytes! # address
+  savingsPoolId: Bytes! # bytes32
   duration: BigInt! # uint64
   numberOfDeposits: BigInt! # uint32
   totalSaved: BigInt! # uint88

@@ -77,6 +77,7 @@ contract ThalerSavingsPool {
      */
     event SavingsPoolCreated(
         address user,
+        bytes32 savingsPoolId,
         uint64 duration,
         uint32 numberOfDeposits,
         uint88 totalSaved,
@@ -239,7 +240,8 @@ contract ThalerSavingsPool {
         ) revert TLR__INVALID_INPUTS();
 
         // Validate duration is divisible by the interval
-        if (_duration % INTERVAL != 0) revert TLR__InvalidDuration();
+        if (_duration % INTERVAL != 0 && _duration != TWELVE_MONTHS)
+            revert TLR__InvalidDuration();
 
         // Generate a unique ID for the savings pool
         bytes32 savingsPoolId = keccak256(
@@ -249,6 +251,7 @@ contract ThalerSavingsPool {
         // Emit event for savings pool creation
         emit SavingsPoolCreated(
             msg.sender,
+            savingsPoolId,
             _duration,
             _totalIntervals,
             _initialDeposit,
@@ -318,7 +321,8 @@ contract ThalerSavingsPool {
             revert TLR__INVALID_INPUTS();
 
         // Validate duration is divisible by the interval
-        if (_duration % INTERVAL != 0) revert TLR__InvalidDuration();
+        if (_duration % INTERVAL != 0 && _duration != TWELVE_MONTHS)
+            revert TLR__InvalidDuration();
 
         // Validate sent ETH matches the initial deposit
         if (msg.value != _initialDeposit)
@@ -332,6 +336,7 @@ contract ThalerSavingsPool {
         // Emit event for savings pool creation
         emit SavingsPoolCreated(
             msg.sender,
+            savingsPoolId,
             _duration,
             _totalIntervals,
             _initialDeposit,
@@ -490,12 +495,19 @@ contract ThalerSavingsPool {
         // Get the savings pool from storage
         SavingsPool storage savingsPool = savingsPools[_savingsPoolId];
 
+        // Validate caller is the pool owner
+        if (msg.sender != savingsPool.user) revert TLR__CallerNotOwner();
+
+        // Validate there are funds to withdraw
+        if (savingsPool.totalSaved == 0) revert TLR__InsufficientSavings();
+
+        uint256 donationAmount;
         // Validate savings pool has ended
         if (block.timestamp < savingsPool.endDate) {
             if (_charityAddress == address(0))
                 revert TLR__InvalidCharityAddress();
 
-            uint256 donationAmount = (savingsPool.endDate / 2) > block.timestamp
+            donationAmount = (savingsPool.endDate / 2) > block.timestamp
                 ? ((savingsPool.totalSaved) / 4)
                 : ((savingsPool.totalSaved) / 8);
 
@@ -506,12 +518,6 @@ contract ThalerSavingsPool {
             );
             if (success == false) revert TLR__DonationFailed();
         }
-
-        // Validate caller is the pool owner
-        if (msg.sender != savingsPool.user) revert TLR__CallerNotOwner();
-
-        // Validate there are funds to withdraw
-        if (savingsPool.totalSaved == 0) revert TLR__InsufficientSavings();
 
         // Emit withdrawal event
         emit WithdrawFromEthPool(
@@ -524,7 +530,7 @@ contract ThalerSavingsPool {
             _savingsPoolId,
             savingsPool.totalSaved
         );
-        uint256 totalSaved = savingsPool.totalSaved;
+        uint256 totalSaved = savingsPool.totalSaved - donationAmount;
 
         // Delete the savings pool
         delete savingsPools[_savingsPoolId];
@@ -548,13 +554,20 @@ contract ThalerSavingsPool {
         // Get the savings pool from storage
         SavingsPool storage savingsPool = savingsPools[_savingsPoolId];
 
+        // Validate caller is the pool owner
+        if (msg.sender != savingsPool.user) revert TLR__CallerNotOwner();
+
+        // Validate there are funds to withdraw
+        if (savingsPool.totalSaved == 0) revert TLR__InsufficientSavings();
+
+        uint256 donationAmount;
         // If withdrawing early, donate
         if (block.timestamp < savingsPool.endDate) {
             if (_charityAddress == address(0))
                 revert TLR__InvalidCharityAddress();
 
             // Extract donation amount from public inputs (4th parameter)
-            uint256 donationAmount = (savingsPool.endDate / 2) > block.timestamp
+            donationAmount = (savingsPool.endDate / 2) > block.timestamp
                 ? ((savingsPool.totalSaved) / 4)
                 : ((savingsPool.totalSaved) / 8);
 
@@ -565,12 +578,6 @@ contract ThalerSavingsPool {
             );
             if (success == false) revert TLR__DonationFailed();
         }
-
-        // Validate caller is the pool owner
-        if (msg.sender != savingsPool.user) revert TLR__CallerNotOwner();
-
-        // Validate there are funds to withdraw
-        if (savingsPool.totalSaved == 0) revert TLR__InsufficientSavings();
 
         // Emit withdrawal event
         emit WithdrawFromERC20Pool(
@@ -585,7 +592,7 @@ contract ThalerSavingsPool {
             savingsPool.totalSaved
         );
 
-        uint256 totalSaved = savingsPool.totalSaved;
+        uint256 totalSaved = savingsPool.totalSaved - donationAmount;
         address tokenToSave = savingsPool.tokenToSave;
 
         // Delete the savings pool
@@ -612,7 +619,7 @@ contract ThalerSavingsPool {
         if (_tokenToSave != address(0)) {
             return
                 success = IERC20(_tokenToSave).transferFrom(
-                    msg.sender,
+                    address(this),
                     charityAddress,
                     amountToDonate
                 );

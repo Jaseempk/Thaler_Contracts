@@ -8,9 +8,9 @@ dataSources:
     name: ThalerSavingsPool
     network: base-sepolia
     source:
-      address: "0x2a55A6D89E46B5108Dc1986Cc8be483CAd0ff867"
+      address: "0x5AF37fb2fff2d7D0520C80f1eA4F317024d4fc2C"
       abi: ThalerSavingsPool
-      startBlock: 23955856
+      startBlock: 24040227
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -31,7 +31,7 @@ dataSources:
           handler: handleCharityWhitelisted
         - event: EarlyWithdrawalDonation(address,address,uint256,address)
           handler: handleEarlyWithdrawalDonation
-        - event: SavingsPoolCreated(address,uint64,uint32,uint88,address,uint88,uint8,uint88,uint48,uint48,uint48,uint48)
+        - event: SavingsPoolCreated(address,bytes32,uint64,uint32,uint88,address,uint88,uint8,uint88,uint48,uint48,uint48,uint48)
           handler: handleSavingsPoolCreated
         - event: SavingsPoolERC20Deposited(address,bytes32,uint88,uint88,uint48,uint32,uint48)
           handler: handleSavingsPoolERC20Deposited

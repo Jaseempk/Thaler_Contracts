@@ -47,7 +47,7 @@ deploy:
 
 
 verify:
-	@forge verify-contract --chain-id 84532 --watch --etherscan-api-key $(ETHERSCAN_API_KEY) --compiler-version 0.8.27 0x2a55A6D89E46B5108Dc1986Cc8be483CAd0ff867 src/ThalerSavingsPool.sol:ThalerSavingsPool 
+	@forge verify-contract --chain-id 84532 --watch --etherscan-api-key $(ETHERSCAN_API_KEY) --compiler-version 0.8.27 0x5AF37fb2fff2d7D0520C80f1eA4F317024d4fc2C src/ThalerSavingsPool.sol:ThalerSavingsPool 
 #@forge verify-contract --chain-id 84532 --watch --constructor-args `cast abi-encode "constructor(address)" "$(ESCROW)"` --etherscan-api-key $(ETHERSCAN_API_KEY) --compiler-version 0.8.27 0x7627F934F4f32fd34C1eCb1ec938bf64b0149Aa9 src/YapOrderBookFactory.sol:YapOrderBookFactory
 #@forge verify-contract --chain-id 84532 --watch --constructor-args `cast abi-encode "constructor(address,address)" "$(USDC)" "$(FACTORY)"` --etherscan-api-key $(ETHERSCAN_API_KEY) --compiler-version 0.8.27 0xa55b6f0BC1Ef608393678530C179D19715B75e7c src/YapEscrow.sol:YapEscrow
 #forge verify-contract --chain-id 84532 --watch --constructor-args `cast abi-encode "constructor(address,address,address,address,uint256)" "$(STABLECOIN)" "$(FEECOLLECTOR)" "$(ESCROW)" "$(YAPORACLE)" "$(KOLID)"` --etherscan-api-key $(ETHERSCAN_API_KEY) --compiler-version 0.8.27 0xD2bB8F9cb41a03a5c93770dfe508F00Ee6FB5075 src/YapOrderBook.sol:YapOrderBook
